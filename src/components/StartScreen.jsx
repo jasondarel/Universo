@@ -76,14 +76,14 @@ function StartScreen({ onStart }) {
       </div>
 
       {/* Cosmic gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-radial from-transparent via-blue-900/10 to-purple-900/30" />
+      <div className="absolute inset-0 bg-black" />
 
       {/* Main content */}
       <div className="relative z-10 text-center space-y-8 px-8">
         {/* Title */}
         <div className="space-y-4">
-          <h1 className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-            3D UNIVERSE
+          <h1 className="text-6xl md:text-8xl font-bold bg-white bg-clip-text text-transparent">
+            Universo
           </h1>
           <div className="h-1 w-32 mx-auto bg-gradient-to-r from-blue-400 to-purple-400 rounded-full" />
         </div>
@@ -98,7 +98,9 @@ function StartScreen({ onStart }) {
           Journey through a breathtaking 3D cosmos filled with stars, planets,
           nebulas, and black holes.
           <br />
-          <span className="text-blue-300">Immersive space music included.</span>
+          <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            Immersive space music included.
+          </span>
         </p>
 
         {/* Start button */}
@@ -108,11 +110,10 @@ function StartScreen({ onStart }) {
             className="group relative px-12 py-4 text-xl font-semibold text-white transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-400/50"
           >
             {/* Button background with cosmic effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-full blur-sm group-hover:blur-md transition-all duration-300" />
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full group-hover:from-blue-400 group-hover:via-purple-400 group-hover:to-pink-400 transition-all duration-300" />
+            <div className="absolute inset-0 bg-white rounded-full group-hover:from-blue-400 group-hover:via-purple-400 group-hover:to-pink-400 transition-all duration-300" />
 
             {/* Button content */}
-            <span className="relative flex items-center justify-center space-x-3">
+            <span className="relative flex items-center justify-center space-x-3 text-black">
               <span>START JOURNEY</span>
             </span>
 
@@ -125,19 +126,19 @@ function StartScreen({ onStart }) {
           <div className="space-y-4">
             <div className="flex items-center justify-center space-x-3">
               <div
-                className="w-3 h-3 bg-blue-400 rounded-full animate-bounce"
+                className="w-3 h-3 bg-blue-100 rounded-full animate-bounce"
                 style={{ animationDelay: "0ms" }}
               />
               <div
-                className="w-3 h-3 bg-purple-400 rounded-full animate-bounce"
+                className="w-3 h-3 bg-blue-100 rounded-full animate-bounce"
                 style={{ animationDelay: "150ms" }}
               />
               <div
-                className="w-3 h-3 bg-pink-400 rounded-full animate-bounce"
+                className="w-3 h-3 bg-blue-100 rounded-full animate-bounce"
                 style={{ animationDelay: "300ms" }}
               />
             </div>
-            <p className="text-blue-200 text-lg">
+            <p className="text-blue-100 text-lg">
               Initializing cosmic experience...
             </p>
           </div>
