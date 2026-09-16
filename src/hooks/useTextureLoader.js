@@ -34,8 +34,8 @@ if (typeof window !== "undefined") {
   });
 }
 
-export function useTextureLoader(object, gl) {
-  const initialTex = object.texture
+export function useTextureLoader(object, gl, enabled = true) {
+  const initialTex = enabled && object && object.texture
     ? textureCache.get(`/textures/${object.texture}`) || null
     : null;
   const [texture, setTexture] = useState(initialTex);
@@ -246,6 +246,7 @@ export function useTextureLoader(object, gl) {
 
   // Try to load texture from public/textures, fallback to generated
   useEffect(() => {
+    if (!enabled || !object) return;
     let cancelled = false;
     const loader = new THREE.TextureLoader();
 
@@ -310,7 +311,7 @@ export function useTextureLoader(object, gl) {
     return () => {
       cancelled = true;
     };
-  }, [object, gl]);
+  }, [object, gl, enabled]);
 
   return texture;
 }

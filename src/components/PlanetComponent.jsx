@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from "react";
+import React, { useRef, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useTextureLoader } from "../hooks/useTextureLoader";
@@ -115,6 +115,35 @@ function getCloudTexture(type = "standard") {
   return tex;
 }
 
+// Shared procedural normal map cache for planet surface detail
+let sharedNormalMap = null;
+
+function getSharedNormalMap() {
+  if (sharedNormalMap) {
+    return sharedNormalMap;
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+
+  const imageData = ctx.createImageData(256, 256);
+  for (let i = 0; i < imageData.data.length; i += 4) {
+    const height = Math.random();
+    imageData.data[i] = height * 128 + 127;
+    imageData.data[i + 1] = height * 128 + 127;
+    imageData.data[i + 2] = 255;
+    imageData.data[i + 3] = 255;
+  }
+  ctx.putImageData(imageData, 0, 0);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  sharedNormalMap = tex;
+  return sharedNormalMap;
+}
+
 function PlanetComponent({ object, onClick }) {
   const { gl } = useThree();
   const meshRef = useRef();
@@ -122,7 +151,6 @@ function PlanetComponent({ object, onClick }) {
   const ringRef1 = useRef();
   const ringRef2 = useRef();
   const ringRef3 = useRef();
-  const [hovered, setHovered] = useState(false);
   const texture = useTextureLoader(object, gl);
 
   const isGasGiant =
@@ -142,25 +170,7 @@ function PlanetComponent({ object, onClick }) {
     [hasClouds, cloudType]
   );
 
-  // Generate normal map for surface detail
-  const generateNormalMap = () => {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    canvas.width = 256;
-    canvas.height = 256;
-
-    const imageData = ctx.createImageData(256, 256);
-    for (let i = 0; i < imageData.data.length; i += 4) {
-      const height = Math.random();
-      imageData.data[i] = height * 128 + 127;
-      imageData.data[i + 1] = height * 128 + 127;
-      imageData.data[i + 2] = 255;
-      imageData.data[i + 3] = 255;
-    }
-    ctx.putImageData(imageData, 0, 0);
-
-    return new THREE.CanvasTexture(canvas);
-  };
+  const normalMap = useMemo(() => getSharedNormalMap(), []);
 
   // Helper function to get atmosphere color based on planet color
   const getPlanetAtmosphereColor = (planetColor) => {
@@ -175,8 +185,6 @@ function PlanetComponent({ object, onClick }) {
       return "#e0e0e0"; // Light gray atmosphere for gray planets
     return "#cccccc"; // Default neutral gray instead of blue
   };
-
-  const normalMap = generateNormalMap();
 
   useFrame(() => {
     // Planet terrain rotation
@@ -221,11 +229,9 @@ function PlanetComponent({ object, onClick }) {
         ref={meshRef}
         onClick={handleClick}
         onPointerOver={() => {
-          setHovered(true);
           document.body.style.cursor = "pointer";
         }}
         onPointerOut={() => {
-          setHovered(false);
           document.body.style.cursor = "default";
         }}
         castShadow
