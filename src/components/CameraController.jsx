@@ -3,7 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 
-function CameraController({ target, onComplete, movementRadius = 290 }) {
+function CameraController({ target, onComplete, movementRadius = 290, enabled = true }) {
   const { camera, scene } = useThree();
   const controlsRef = useRef();
   const [isAnimating, setIsAnimating] = useState(false);
@@ -15,6 +15,7 @@ function CameraController({ target, onComplete, movementRadius = 290 }) {
   // Input handlers
   useEffect(() => {
     const down = (e) => {
+      if (!enabled) return;
       keysRef.current[e.key.toLowerCase()] = true;
     };
     const up = (e) => {
@@ -26,7 +27,7 @@ function CameraController({ target, onComplete, movementRadius = 290 }) {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
     };
-  }, []);
+  }, [enabled]);
 
   React.useEffect(() => {
     if (target && controlsRef.current) {
@@ -104,7 +105,7 @@ function CameraController({ target, onComplete, movementRadius = 290 }) {
 
   // WASD movement integrated with OrbitControls aim point
   useFrame(() => {
-    if (!controlsRef.current || isAnimating) {
+    if (!enabled || !controlsRef.current || isAnimating) {
       lastFrameRef.current = performance.now();
       return;
     }
@@ -179,10 +180,10 @@ function CameraController({ target, onComplete, movementRadius = 290 }) {
     <>
       <OrbitControls
         ref={controlsRef}
-        enabled={!isAnimating}
-        enableZoom={true}
-        enablePan={true}
-        enableRotate={true}
+        enabled={enabled && !isAnimating}
+        enableZoom={enabled}
+        enablePan={enabled}
+        enableRotate={enabled}
         zoomSpeed={0.8}
         panSpeed={0.8}
         rotateSpeed={0.4}

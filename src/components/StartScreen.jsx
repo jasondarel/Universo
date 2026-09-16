@@ -1,33 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useSmoothProgress } from "../hooks/useSmoothProgress";
 
-function StartScreen({ onStart }) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [stars, setStars] = useState([]);
-
-  // Generate random stars for background animation
-  useEffect(() => {
-    const generateStars = () => {
-      const starArray = [];
-      for (let i = 0; i < 200; i++) {
-        starArray.push({
-          id: i,
-          x: Math.random() * 100,
-          y: Math.random() * 100,
-          size: Math.random() * 2 + 1,
-          opacity: Math.random() * 0.8 + 0.2,
-          twinkleDelay: Math.random() * 4,
-        });
-      }
-      setStars(starArray);
-    };
-
-    generateStars();
-  }, []);
+function StartScreen({ onStart, isStarted }) {
+  const { progress, isReady } = useSmoothProgress();
 
   const handleStart = async () => {
-    setIsLoading(true);
+    if (!isReady || isStarted) return;
 
-    // Start the music with user interaction
+    // Start ambient music with user interaction
     try {
       let audio = document.getElementById("space-music-global");
 
@@ -43,123 +23,96 @@ function StartScreen({ onStart }) {
       }
 
       await audio.play();
-      console.log("✅ Space music started from start screen");
     } catch (error) {
-      console.log("❌ Music start failed:", error.message);
+      console.log("Audio playback error:", error?.message);
     }
 
-    // Simulate loading time for dramatic effect
-    setTimeout(() => {
-      onStart();
-    }, 2000);
+    // Preload whoosh audio effect
+    try {
+      const whoosh = new Audio("/sounds/whoosh-in.wav");
+      whoosh.preload = "auto";
+      whoosh.load();
+    } catch {}
+
+    onStart();
   };
 
   return (
-    <div className="relative w-full h-screen bg-gradient-to-b from-black via-purple-900/20 to-black overflow-hidden flex items-center justify-center">
-      {/* Animated star field background */}
-      <div className="absolute inset-0">
-        {stars.map((star) => (
-          <div
-            key={star.id}
-            className="absolute bg-white rounded-full animate-pulse"
-            style={{
-              left: `${star.x}%`,
-              top: `${star.y}%`,
-              width: `${star.size}px`,
-              height: `${star.size}px`,
-              opacity: star.opacity,
-              animationDelay: `${star.twinkleDelay}s`,
-              animationDuration: "3s",
-            }}
-          />
-        ))}
+    <div
+      className={`relative w-full h-screen transition-colors duration-1000 ease-out text-neutral-100 flex flex-col justify-between p-6 sm:p-10 select-none overflow-hidden font-sans ${
+        isReady ? "bg-black/75 backdrop-blur-[2px]" : "bg-black"
+      }`}
+    >
+      {/* Subtle corner crosshairs / viewfinder framing */}
+      <div className="pointer-events-none absolute inset-6 sm:inset-10 border border-neutral-800/60 rounded-xl">
+        <div className="absolute -top-1.5 -left-1.5 w-3 h-3 border-t-2 border-l-2 border-neutral-500" />
+        <div className="absolute -top-1.5 -right-1.5 w-3 h-3 border-t-2 border-r-2 border-neutral-500" />
+        <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 border-b-2 border-l-2 border-neutral-500" />
+        <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 border-b-2 border-r-2 border-neutral-500" />
       </div>
 
-      {/* Cosmic gradient overlay */}
-      <div className="absolute inset-0 bg-black" />
-
-      {/* Main content */}
-      <div className="relative z-10 text-center space-y-8 px-8">
+      {/* Center Hero Section */}
+      <main className="relative z-10 max-w-2xl mx-auto text-center my-auto space-y-6 px-4">
         {/* Title */}
-        <div className="space-y-4">
-          <h1 className="text-6xl md:text-8xl font-bold bg-white bg-clip-text text-transparent">
+        <div className="space-y-3">
+          <h1 className="font-space text-6xl sm:text-7xl md:text-8xl font-light tracking-tight text-white uppercase">
             Universo
           </h1>
-          <div className="h-1 w-32 mx-auto bg-gradient-to-r from-blue-400 to-purple-400 rounded-full" />
+          <p className="font-sans text-sm sm:text-base text-neutral-400 max-w-md mx-auto font-normal leading-relaxed">
+            An interactive 3D simulation of celestial systems, stellar nurseries, and gravitational singularities.
+          </p>
         </div>
 
-        {/* Subtitle */}
-        <p className="text-2xl md:text-3xl text-blue-100 font-light tracking-wide">
-          Begin space experience?
-        </p>
-
-        {/* Description */}
-        <p className="text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed">
-          Journey through a breathtaking 3D cosmos filled with stars, planets,
-          nebulas, and black holes.
-          <br />
-          <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-            Immersive space music included.
-          </span>
-        </p>
-
-        {/* Start button */}
-        {!isLoading ? (
-          <button
-            onClick={handleStart}
-            className="group relative px-12 py-4 text-xl font-semibold text-white transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-400/50"
-          >
-            {/* Button background with cosmic effect */}
-            <div className="absolute inset-0 bg-white rounded-full group-hover:from-blue-400 group-hover:via-purple-400 group-hover:to-pink-400 transition-all duration-300" />
-
-            {/* Button content */}
-            <span className="relative flex items-center justify-center space-x-3 text-black">
-              <span>START JOURNEY</span>
-            </span>
-
-            {/* Glowing ring effect */}
-            <div className="absolute inset-0 rounded-full border-2 border-white/20 group-hover:border-white/40 transition-all duration-300" />
-            <div className="absolute inset-0 rounded-full border border-white/10 group-hover:border-white/20 transition-all duration-300 animate-pulse" />
-          </button>
-        ) : (
-          /* Loading state */
-          <div className="space-y-4">
-            <div className="flex items-center justify-center space-x-3">
-              <div
-                className="w-3 h-3 bg-blue-100 rounded-full animate-bounce"
-                style={{ animationDelay: "0ms" }}
-              />
-              <div
-                className="w-3 h-3 bg-blue-100 rounded-full animate-bounce"
-                style={{ animationDelay: "150ms" }}
-              />
-              <div
-                className="w-3 h-3 bg-blue-100 rounded-full animate-bounce"
-                style={{ animationDelay: "300ms" }}
-              />
+        {/* Action Button or Real-Time Loader */}
+        <div className="pt-2">
+          {isReady ? (
+            <button
+              onClick={handleStart}
+              className="group relative inline-flex items-center space-x-3 px-8 py-3.5 rounded-lg bg-white text-neutral-950 font-space font-semibold text-sm tracking-wider uppercase transition-all duration-300 hover:bg-neutral-200 hover:shadow-[0_0_30px_rgba(255,255,255,0.25)] hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+            >
+              <span>ENTER OBSERVATORY</span>
+              <svg
+                className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+          ) : (
+            <div className="max-w-xs sm:max-w-sm mx-auto space-y-2.5 font-mono">
+              <div className="flex justify-between text-xs text-neutral-400 tracking-wider">
+                <span className="uppercase text-[11px]">CALIBRATING TELEMETRY</span>
+                <span className="text-cyan-400 font-semibold">{progress}%</span>
+              </div>
+              <div className="h-1.5 w-full bg-neutral-900 border border-neutral-800 rounded-full overflow-hidden p-0.5">
+                <div
+                  className="h-full bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+                  style={{ width: `${Math.max(6, Math.min(100, progress))}%` }}
+                />
+              </div>
+              <div className="text-[10px] text-neutral-500 tracking-wide uppercase">
+                Loading models, textures & orbital coordinates...
+              </div>
             </div>
-            <p className="text-blue-100 text-lg">
-              Initializing cosmic experience...
-            </p>
-          </div>
-        )}
-
-        {/* Floating particles */}
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 bg-white/60 rounded-full animate-float"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 5}s`,
-                animationDuration: `${5 + Math.random() * 10}s`,
-              }}
-            />
-          ))}
+          )}
         </div>
-      </div>
+      </main>
+
+      {/* Bottom Controls / Status Footer */}
+      <footer className="relative z-10 flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-neutral-500 pt-4 border-t border-neutral-900/60 gap-2 sm:gap-0">
+        <div className="flex items-center space-x-2 tracking-wider">
+          <span className="text-neutral-400 font-medium">[ CONTROLS ]</span>
+          <span className="text-neutral-500">WASD: Roam • Click: Focus • Scroll: Zoom</span>
+        </div>
+
+        <div className="flex items-center space-x-3 text-neutral-500 tracking-widest text-[11px]">
+          <span>ATMOSPHERE AUDIO: READY</span>
+          <span className="text-neutral-700">•</span>
+          <span>SPATIAL COORD: [0, 0, 100]</span>
+        </div>
+      </footer>
     </div>
   );
 }

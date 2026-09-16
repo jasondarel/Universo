@@ -26,7 +26,7 @@ export const celestialObjects = [
     name: "Sol (Our Sun)",
     position: [0, 0, 0],
     color: "#ffd700",
-    texture: "2k_sun.jpg",
+    texture: "sun.jpg",
     size: 30,
     fun_fact:
       "Our home star! It contains 99.86% of all the mass in our solar system.",
