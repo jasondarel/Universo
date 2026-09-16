@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from "react";
+import React, { useRef, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -8,14 +8,13 @@ function NebulaComponent({ object, onClick }) {
   const { gl } = useThree();
   const meshRef = useRef();
   const groupRef = useRef();
-  const [hovered, setHovered] = useState(false);
-  const texture = useTextureLoader(object, gl);
   // Nebulas that should use GLB models instead of procedural spheres
   const usesNebula1GLB =
     object.name === "Crab Nebula" || object.name === "Eagle Nebula";
   const usesNebula2GLB =
     object.name === "Horsehead Nebula" || object.name === "Orion Nebula";
   const usesNebulaGLB = usesNebula1GLB || usesNebula2GLB;
+  const texture = useTextureLoader(object, gl, !usesNebulaGLB);
 
   // Load BOTH GLBs unconditionally to satisfy Rules of Hooks; cache prevents duplicate network hits
   const nebula1Model = useGLTF("/models/glb/nebula1.glb");
@@ -68,11 +67,10 @@ function NebulaComponent({ object, onClick }) {
     return scene;
   }, [usesNebulaGLB, nebulaModel, object.id, object.color]);
 
-  // No side-effect traversal now; handled inside clonedScene memo
-  useEffect(() => {}, [clonedScene]);
-
-  // Generate advanced nebula texture with multiple gas clouds and filaments
+  // Generate advanced nebula texture with multiple gas clouds and filaments (only for procedural nebulae)
   const advancedNebulaTexture = useMemo(() => {
+    if (usesNebulaGLB) return null;
+
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     canvas.width = 1024;
@@ -186,22 +184,18 @@ function NebulaComponent({ object, onClick }) {
     nebulaTexture.wrapS = THREE.RepeatWrapping;
     nebulaTexture.wrapT = THREE.RepeatWrapping;
     return nebulaTexture;
-  }, [object.color]);
+  }, [usesNebulaGLB, object.color]);
 
   useFrame((state) => {
-    if (meshRef.current) {
-      if (!usesNebulaGLB) {
-        // Slow, organic rotation (disabled for Crab Nebula GLB)
-        meshRef.current.rotation.x += 0.002;
-        meshRef.current.rotation.y += 0.001;
-        meshRef.current.rotation.z += 0.0005;
-      }
-      meshRef.current.userData = { objectId: object.id };
+    if (meshRef.current && !usesNebulaGLB) {
+      // Slow, organic rotation (disabled for Crab Nebula GLB)
+      meshRef.current.rotation.x += 0.002;
+      meshRef.current.rotation.y += 0.001;
+      meshRef.current.rotation.z += 0.0005;
     }
     if (groupRef.current) {
       groupRef.current.position.y =
         object.position[1] + Math.sin(state.clock.elapsedTime * 0.5) * 0.3;
-      groupRef.current.userData = { objectId: object.id, isNebulaRoot: true };
     }
   });
 
@@ -222,17 +216,16 @@ function NebulaComponent({ object, onClick }) {
         <primitive
           ref={meshRef}
           object={clonedScene}
+          userData={{ objectId: object.id }}
           scale={[object.size * glbScale, object.size * glbScale, object.size * glbScale]}
           onClick={(e) => {
             e.stopPropagation();
             onClick(object);
           }}
           onPointerOver={() => {
-            setHovered(true);
             document.body.style.cursor = "pointer";
           }}
           onPointerOut={() => {
-            setHovered(false);
             document.body.style.cursor = "default";
           }}
         />
@@ -250,17 +243,17 @@ function NebulaComponent({ object, onClick }) {
     <group
       ref={groupRef}
       position={[object.position[0], object.position[1], object.position[2]]}
+      userData={{ objectId: object.id, isNebulaRoot: true }}
     >
       {/* Core nebula cloud */}
       <mesh
         ref={meshRef}
+        userData={{ objectId: object.id }}
         onClick={handleClick}
         onPointerOver={() => {
-          setHovered(true);
           document.body.style.cursor = "pointer";
         }}
         onPointerOut={() => {
-          setHovered(false);
           document.body.style.cursor = "default";
         }}
         castShadow
