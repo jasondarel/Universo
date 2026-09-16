@@ -56,8 +56,8 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
       // Planetary rings extend up to 3.2x planet size
       distance = Math.max(distance, objectSize * 5.5);
     } else if (target.type === "nebula") {
-      // Nebulas have diffuse gas boundaries
-      distance = Math.max(distance, objectSize * 3.8);
+      // Nebulae are sprawling cosmic gas clouds; frame with cinematic breathing room
+      distance = Math.max(distance, objectSize * 7.5);
     } else if (target.name && (target.name.includes("Sun") || target.name.includes("Sol"))) {
       // Sol is size 30; frame at a comfortable distance so it doesn't overflow screen
       distance = 115;
@@ -84,9 +84,18 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
     }
 
     // Proportional offset vectors so the object is beautifully framed without clipping
-    const offsetX = distance * 0.35;
-    const offsetY = distance * 0.22;
-    const offsetZ = distance;
+    let offsetX = distance * 0.35;
+    let offsetY = distance * 0.22;
+    let offsetZ = distance;
+
+    if (target.type === "nebula") {
+      // Position camera between origin and nebula, looking outward into deep space (keeping Sol behind camera)
+      const toNebula = new THREE.Vector3(...target.position).normalize();
+      offsetX = -toNebula.x * distance + distance * 0.2;
+      offsetY = -toNebula.y * distance + distance * 0.25;
+      offsetZ = -toNebula.z * distance;
+    }
+
     targetOffsetRef.current.set(offsetX, offsetY, offsetZ);
 
     let progress = 0;

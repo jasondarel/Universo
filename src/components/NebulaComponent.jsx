@@ -20,24 +20,35 @@ function NebulaComponent({ object, onClick }) {
   const nebula1Model = useGLTF("/models/glb/nebula1.glb");
   const nebula2Model = useGLTF("/models/glb/nebula2.glb");
   const nebulaModel = usesNebula1GLB ? nebula1Model : usesNebula2GLB ? nebula2Model : null;
-  // Strong downscale for GLB nebulas ("much much smaller")
-  // Further reduced scale (second shrink request)
-  const glbScale = usesNebula1GLB ? 0.18 : usesNebula2GLB ? 0.14 : 1;
-
-  // Clone the scene so multiple nebulas using the same GLB don't mutate each other
+  // Clone and normalize the scene so all GLB nebulae have consistent, majestic scale and centered core
   const clonedScene = useMemo(() => {
     if (!usesNebulaGLB || !nebulaModel) return null;
     const scene = nebulaModel.scene.clone(true);
 
-    // Compute bounding box and counteract model offset so the swirl core is centered at (0, 0, 0)
+    // Update matrix and compute bounding box
+    scene.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(scene);
     const center = new THREE.Vector3();
+    const size = new THREE.Vector3();
     box.getCenter(center);
+    box.getSize(size);
+
+    // Offset scene so geometry center is at local (0, 0, 0)
     scene.position.set(-center.x, -center.y, -center.z);
 
-    // Ensure materials are unique & tinted
+    // Target world dimension: ~60-80 units across for grand cosmic background scale
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const targetSpan = (object.size || 15) * 4.2;
+    const normalizedScale = targetSpan / maxDim;
+
+    // Pivot group ensures scale is applied around the exact geometric center
+    const pivot = new THREE.Group();
+    pivot.scale.setScalar(normalizedScale);
+    pivot.add(scene);
+
+    // Ensure materials are unique & tinted (supports both Mesh and Points clouds)
     scene.traverse((child) => {
-      if (!child.isMesh) return;
+      if (!child.isMesh && !child.isPoints) return;
       child.userData = { objectId: object.id };
       if (!child.material) return;
 
@@ -57,15 +68,21 @@ function NebulaComponent({ object, onClick }) {
         }
       }
 
+      // If particle points cloud (e.g. nebula1.glb), scale point size and attenuate
+      if (child.isPoints) {
+        mat.size = 1.6;
+        mat.sizeAttenuation = true;
+      }
+
       // Transparency / glow styling
       if ("transparent" in mat) mat.transparent = true;
-      if ("opacity" in mat) mat.opacity = 0.9;
+      if ("opacity" in mat) mat.opacity = 0.85;
       mat.depthWrite = false;
       mat.blending = THREE.AdditiveBlending;
       mat.side = THREE.DoubleSide;
     });
-    return scene;
-  }, [usesNebulaGLB, nebulaModel, object.id, object.color]);
+    return pivot;
+  }, [usesNebulaGLB, nebulaModel, object.id, object.color, object.size]);
 
   // Generate advanced nebula texture with multiple gas clouds and filaments (only for procedural nebulae)
   const advancedNebulaTexture = useMemo(() => {
@@ -217,7 +234,7 @@ function NebulaComponent({ object, onClick }) {
           ref={meshRef}
           object={clonedScene}
           userData={{ objectId: object.id }}
-          scale={[object.size * glbScale, object.size * glbScale, object.size * glbScale]}
+          scale={[1, 1, 1]}
           onClick={(e) => {
             e.stopPropagation();
             onClick(object);
