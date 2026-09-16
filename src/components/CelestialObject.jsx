@@ -5,11 +5,17 @@ import NebulaComponent from "./NebulaComponent";
 import BlackHoleComponent from "./BlackHoleComponent";
 import DeathStarComponent from "./DeathStarComponent";
 
-function CelestialObject({ object, onClick }) {
+function CelestialObject({ object, onClick, onRegisterSun }) {
   // Route to appropriate component based on object type
   switch (object.type) {
     case "star":
-      return <StarComponent object={object} onClick={onClick} />;
+      return (
+        <StarComponent
+          object={object}
+          onClick={onClick}
+          onRegisterSun={onRegisterSun}
+        />
+      );
     case "planet":
       return <PlanetComponent object={object} onClick={onClick} />;
     case "nebula":

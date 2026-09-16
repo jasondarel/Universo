@@ -106,11 +106,11 @@ function PlanetComponent({ object, onClick }) {
 
       {/* Planet atmosphere */}
       <mesh scale={1.05}>
-        <sphereGeometry args={[object.size, 16, 16]} />
+        <sphereGeometry args={[object.size, 32, 32]} />
         <meshBasicMaterial
           color={getPlanetAtmosphereColor(object.color)}
           transparent
-          opacity={0.2}
+          opacity={0.12}
           side={THREE.BackSide}
         />
       </mesh>
@@ -121,10 +121,12 @@ function PlanetComponent({ object, onClick }) {
           {/* Main ring system with multiple layers */}
           <mesh ref={ringRef1} rotation={[Math.PI / 2, 0, 0]}>
             <ringGeometry args={[object.size * 1.3, object.size * 2.5, 64]} />
-            <meshBasicMaterial
+            <meshStandardMaterial
               color="#e6d7c1"
+              roughness={0.6}
+              metalness={0.1}
               transparent
-              opacity={0.7}
+              opacity={0.8}
               side={THREE.DoubleSide}
             />
           </mesh>
@@ -132,10 +134,12 @@ function PlanetComponent({ object, onClick }) {
           {/* Secondary ring layer */}
           <mesh ref={ringRef2} rotation={[Math.PI / 2, 0, 0]}>
             <ringGeometry args={[object.size * 1.4, object.size * 2.2, 64]} />
-            <meshBasicMaterial
+            <meshStandardMaterial
               color="#d4c5a8"
+              roughness={0.6}
+              metalness={0.1}
               transparent
-              opacity={0.5}
+              opacity={0.6}
               side={THREE.DoubleSide}
             />
           </mesh>
@@ -143,10 +147,12 @@ function PlanetComponent({ object, onClick }) {
           {/* Outer ring layer */}
           <mesh ref={ringRef3} rotation={[Math.PI / 2, 0, 0]}>
             <ringGeometry args={[object.size * 2.6, object.size * 3.2, 64]} />
-            <meshBasicMaterial
+            <meshStandardMaterial
               color="#f0e6d2"
+              roughness={0.6}
+              metalness={0.1}
               transparent
-              opacity={0.4}
+              opacity={0.5}
               side={THREE.DoubleSide}
             />
           </mesh>

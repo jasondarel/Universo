@@ -33,7 +33,21 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
     if (target && controlsRef.current) {
       setIsAnimating(true);
 
-      const distance = 50;
+      // Calculate optimal camera framing distance dynamically based on object size & type
+      const objectSize = target.size || 8;
+      let distance = Math.max(38, objectSize * 3.2);
+
+      if (target.hasRings) {
+        // Planetary rings extend up to 3.2x planet size
+        distance = Math.max(distance, objectSize * 5.5);
+      } else if (target.type === "nebula") {
+        // Nebulas have diffuse gas boundaries
+        distance = Math.max(distance, objectSize * 3.8);
+      } else if (target.name && (target.name.includes("Sun") || target.name.includes("Sol"))) {
+        // Sol is size 30; frame at a comfortable distance so it doesn't overflow screen
+        distance = 115;
+      }
+
       const targetPos = new THREE.Vector3(...target.position);
       let actualTargetPos = new THREE.Vector3(...target.position);
       const currentPos = camera.position.clone();
@@ -46,7 +60,11 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
         });
       }
 
-      const offset = new THREE.Vector3(20, 15, distance);
+      // Proportional offset vectors so the object is beautifully framed without clipping
+      const offsetX = distance * 0.35;
+      const offsetY = distance * 0.22;
+      const offsetZ = distance;
+      const offset = new THREE.Vector3(offsetX, offsetY, offsetZ);
       targetOffsetRef.current.copy(offset);
       const newCameraPos = actualTargetPos.clone().add(offset);
 
@@ -187,8 +205,8 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
         zoomSpeed={0.8}
         panSpeed={0.8}
         rotateSpeed={0.4}
-        minDistance={20}
-        maxDistance={400}
+        minDistance={target ? Math.max(15, (target.size || 5) * 1.3) : 15}
+        maxDistance={500}
       />
     </>
   );
