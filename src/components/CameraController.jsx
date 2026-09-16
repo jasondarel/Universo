@@ -54,7 +54,11 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
 
       if (target.type === "nebula") {
         scene.traverse((child) => {
-          if (child.userData && child.userData.objectId === target.id) {
+          if (
+            child.userData &&
+            child.userData.objectId === target.id &&
+            child.userData.isNebulaRoot
+          ) {
             child.getWorldPosition(actualTargetPos);
           }
         });
@@ -86,7 +90,11 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
         let currentTargetPos = actualTargetPos;
         if (target.type === "nebula") {
           scene.traverse((child) => {
-            if (child.userData && child.userData.objectId === target.id) {
+            if (
+              child.userData &&
+              child.userData.objectId === target.id &&
+              child.userData.isNebulaRoot
+            ) {
               currentTargetPos = new THREE.Vector3();
               child.getWorldPosition(currentTargetPos);
             }

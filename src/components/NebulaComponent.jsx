@@ -29,6 +29,13 @@ function NebulaComponent({ object, onClick }) {
   const clonedScene = useMemo(() => {
     if (!usesNebulaGLB || !nebulaModel) return null;
     const scene = nebulaModel.scene.clone(true);
+
+    // Compute bounding box and counteract model offset so the swirl core is centered at (0, 0, 0)
+    const box = new THREE.Box3().setFromObject(scene);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    scene.position.set(-center.x, -center.y, -center.z);
+
     // Ensure materials are unique & tinted
     scene.traverse((child) => {
       if (!child.isMesh) return;
@@ -194,6 +201,7 @@ function NebulaComponent({ object, onClick }) {
     if (groupRef.current) {
       groupRef.current.position.y =
         object.position[1] + Math.sin(state.clock.elapsedTime * 0.5) * 0.3;
+      groupRef.current.userData = { objectId: object.id, isNebulaRoot: true };
     }
   });
 
@@ -209,6 +217,7 @@ function NebulaComponent({ object, onClick }) {
       <group
         ref={groupRef}
         position={[object.position[0], object.position[1], object.position[2]]}
+        userData={{ objectId: object.id, isNebulaRoot: true }}
       >
         <primitive
           ref={meshRef}

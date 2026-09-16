@@ -1,6 +1,29 @@
 import React, { useState, useMemo } from "react";
 import { celestialObjects } from "../data/celestialObjects";
 
+const GROUP_CONFIG = {
+  star: {
+    label: "Star Systems",
+    dot: "bg-amber-400",
+  },
+  planet: {
+    label: "Planetary Bodies",
+    dot: "bg-emerald-400",
+  },
+  nebula: {
+    label: "Diffuse Nebulae",
+    dot: "bg-purple-400",
+  },
+  black_hole: {
+    label: "Singularities",
+    dot: "bg-cyan-400",
+  },
+  deathstar: {
+    label: "Superstructures",
+    dot: "bg-rose-400",
+  },
+};
+
 function ObjectNavigator({ onObjectSelect, selectedObject }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState({
@@ -23,15 +46,6 @@ function ObjectNavigator({ onObjectSelect, selectedObject }) {
     return groups;
   }, []);
 
-  // Get type display names
-  const typeDisplayNames = {
-    star: "Stars",
-    planet: "Planets",
-    nebula: "Nebulae",
-    black_hole: "Black Holes",
-    deathstar: "Space Stations",
-  };
-
   const toggleGroup = (type) => {
     setExpandedGroups((prev) => ({
       ...prev,
@@ -49,100 +63,157 @@ function ObjectNavigator({ onObjectSelect, selectedObject }) {
       {/* Toggle Button */}
       <button
         onClick={() => setIsMenuOpen(!isMenuOpen)}
-        className={`fixed top-4 right-4 z-50 bg-gray-900/80 hover:bg-gray-800/90 text-white p-3 rounded-full backdrop-blur-sm border border-gray-600/50 transition-all duration-300 ${
-          isMenuOpen ? "rotate-45" : ""
+        className={`fixed top-4 right-4 z-40 flex items-center space-x-2.5 px-3.5 py-2 rounded-xl backdrop-blur-md border transition-all duration-300 font-mono text-xs shadow-xl cursor-pointer ${
+          isMenuOpen
+            ? "bg-neutral-900 border-neutral-700 text-white shadow-[0_0_20px_rgba(34,211,238,0.2)]"
+            : "bg-neutral-950/85 hover:bg-neutral-900/90 border-neutral-800 text-neutral-300 hover:text-white"
         }`}
-        title="Object Navigator"
+        title="Celestial Catalog"
       >
         <svg
-          width="24"
-          height="24"
+          width="15"
+          height="15"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
+          className="text-cyan-400"
         >
-          <line x1="3" y1="6" x2="21" y2="6"></line>
-          <line x1="3" y1="12" x2="21" y2="12"></line>
-          <line x1="3" y1="18" x2="21" y2="18"></line>
+          <circle cx="12" cy="12" r="10" />
+          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
         </svg>
+        <span className="font-space uppercase tracking-wider font-medium text-[11px]">
+          CATALOG
+        </span>
+        <span className="px-1.5 py-0.5 rounded bg-neutral-800/80 text-neutral-400 text-[10px]">
+          {celestialObjects.length}
+        </span>
       </button>
 
       {/* Navigation Menu */}
       {isMenuOpen && (
-        <div className="fixed top-20 right-4 z-40 bg-gray-900/95 backdrop-blur-md text-white rounded-lg border border-gray-600/50 shadow-2xl max-h-[70vh] overflow-y-auto w-80">
-          <div className="p-4 border-b border-gray-700">
-            <h2 className="text-xl font-bold text-blue-300">
-              Object Navigator
-            </h2>
-            <p className="text-sm text-gray-400 mt-1">
-              Navigate through the universe
-            </p>
+        <div className="fixed top-16 right-4 z-40 bg-neutral-950/90 backdrop-blur-md text-neutral-100 rounded-xl border border-neutral-800 shadow-[0_15px_50px_rgba(0,0,0,0.85)] max-h-[75vh] flex flex-col w-84 sm:w-88 overflow-hidden font-sans">
+          {/* Header */}
+          <div className="p-4 border-b border-neutral-800/80 flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest flex items-center space-x-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                <span>SECTOR DATABASE</span>
+              </div>
+              <h2 className="text-lg font-space font-semibold text-white mt-0.5 tracking-tight">
+                Celestial Catalog
+              </h2>
+            </div>
+            <button
+              onClick={() => setIsMenuOpen(false)}
+              className="text-neutral-500 hover:text-white p-1 rounded-lg hover:bg-neutral-800/60 transition-colors cursor-pointer"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
 
-          <div className="p-2">
-            {Object.entries(groupedObjects).map(([type, objects]) => (
-              <div key={type} className="mb-3">
-                {/* Group Header */}
-                <button
-                  onClick={() => toggleGroup(type)}
-                  className="w-full flex items-center justify-between p-2 rounded hover:bg-gray-800/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-blue-200">
-                      {typeDisplayNames[type]}
-                    </span>
-                    <span className="text-sm text-gray-400">
-                      ({objects.length})
-                    </span>
-                  </div>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className={`transition-transform duration-200 ${
-                      expandedGroups[type] ? "rotate-180" : ""
-                    }`}
-                  >
-                    <polyline points="6,9 12,15 18,9"></polyline>
-                  </svg>
-                </button>
+          {/* Grouped Object Lists */}
+          <div className="p-3 pr-2.5 overflow-y-auto space-y-2 flex-1">
+            {Object.entries(groupedObjects).map(([type, objects]) => {
+              const meta = GROUP_CONFIG[type] || {
+                label: type,
+                dot: "bg-neutral-400",
+              };
+              const isExpanded = expandedGroups[type];
 
-                {/* Group Objects */}
-                {expandedGroups[type] && (
-                  <div className="ml-4 mt-1 space-y-1">
-                    {objects.map((object) => (
-                      <button
-                        key={object.id}
-                        onClick={() => handleObjectClick(object)}
-                        className={`w-full text-left p-2 rounded text-sm hover:bg-gray-700/50 transition-colors flex items-center gap-2 ${
-                          selectedObject?.id === object.id
-                            ? "bg-blue-600/30 border-l-2 border-blue-400"
-                            : ""
-                        }`}
-                      >
-                        <span className="flex-1">{object.name}</span>
-                        {selectedObject?.id === object.id && (
-                          <span className="text-blue-400 text-xs">●</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+              return (
+                <div key={type} className="rounded-lg bg-neutral-900/30 border border-neutral-800/50 overflow-hidden">
+                  {/* Group Header */}
+                  <button
+                    onClick={() => toggleGroup(type)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-neutral-900/70 transition-colors text-left font-mono cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                      <span className="text-xs uppercase font-medium text-neutral-300 tracking-wider">
+                        {meta.label}
+                      </span>
+                      <span className="text-[10px] text-neutral-500">
+                        ({objects.length})
+                      </span>
+                    </div>
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className={`text-neutral-500 transition-transform duration-200 ${
+                        isExpanded ? "rotate-180" : ""
+                      }`}
+                    >
+                      <polyline points="6,9 12,15 18,9"></polyline>
+                    </svg>
+                  </button>
+
+                  {/* Group Objects */}
+                  {isExpanded && (
+                    <div className="px-2 pb-2 space-y-1">
+                      {objects.map((object) => {
+                        const isSelected = selectedObject?.id === object.id;
+
+                        return (
+                          <button
+                            key={object.id}
+                            onClick={() => handleObjectClick(object)}
+                            className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-all flex items-center justify-between group cursor-pointer ${
+                              isSelected
+                                ? "bg-neutral-800/80 border-l-2 border-cyan-400 text-white font-medium pl-2.5"
+                                : "hover:bg-neutral-800/40 text-neutral-400 hover:text-neutral-200"
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2.5 truncate">
+                              <span
+                                className="w-2 h-2 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: object.color || "#ffffff" }}
+                              />
+                              <span className="truncate">{object.name}</span>
+                            </div>
+                            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity font-mono text-[10px] text-neutral-400">
+                              <span>Target</span>
+                              <svg
+                                width="10"
+                                height="10"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                              </svg>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Footer */}
-          <div className="p-3 border-t border-gray-700 text-xs text-gray-500">
-            Click any object to navigate there
+          <div className="p-3 border-t border-neutral-800/80 text-[10px] font-mono text-neutral-500 flex items-center justify-between bg-neutral-950">
+            <span>SELECT TO ENGAGE CAMERA</span>
+            <span className="text-cyan-400/80">SECTOR 01</span>
           </div>
         </div>
       )}
@@ -150,9 +221,9 @@ function ObjectNavigator({ onObjectSelect, selectedObject }) {
       {/* Backdrop */}
       {isMenuOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/20"
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[1px]"
           onClick={() => setIsMenuOpen(false)}
-        ></div>
+        />
       )}
     </>
   );

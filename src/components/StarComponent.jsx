@@ -81,12 +81,17 @@ function StarComponent({ object, onClick, onRegisterSun }) {
   const coronaRef = useRef();
   const raysRef = useRef();
   const [hovered, setHovered] = useState(false);
-  const texture = useTextureLoader(object, gl);
-
   const isSol =
     object.name?.toLowerCase().includes("sol") ||
     object.name?.toLowerCase().includes("sun") ||
     (object.position[0] === 0 && object.position[1] === 0 && object.position[2] === 0);
+
+  // Use authored texture or fallback to solar plasma texture tinted by stellar spectrum color
+  const starObject = useMemo(
+    () => (object.texture ? object : { ...object, texture: "sun.jpg" }),
+    [object]
+  );
+  const texture = useTextureLoader(starObject, gl);
 
   const coronaColor = isSol ? "#ffd060" : object.color;
   const coronaTex = useMemo(() => getCoronaTexture(coronaColor), [coronaColor]);
@@ -172,7 +177,7 @@ function StarComponent({ object, onClick, onRegisterSun }) {
         <sphereGeometry args={[object.size, 64, 32]} />
         <meshBasicMaterial
           map={texture || null}
-          color={hovered ? "#ffffff" : isSol ? "#fff8eb" : object.color}
+          color={isSol ? "#fff8eb" : object.color}
           toneMapped={false}
         />
       </mesh>
