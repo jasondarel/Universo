@@ -1,4 +1,4 @@
-import React, { useState, Suspense, useEffect } from "react";
+import React, { useState, useRef, Suspense, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Stars } from "@react-three/drei";
 import CameraController from "./CameraController";
@@ -18,60 +18,22 @@ function Universe({ active = true }) {
   const [isHudExpanded, setIsHudExpanded] = useState(true);
   const { isReady: isSceneReady } = useSmoothProgress();
 
-  // Play whoosh sound effect using audio file with timing adjustment
+  // Cached audio instance for whoosh sound effect
+  const whooshAudioRef = useRef(null);
+
   const playWhooshSound = () => {
     try {
-      const audio = new Audio("/sounds/whoosh-in.wav");
-      audio.volume = 0.3;
-
-      // Skip the silent part at the beginning (adjust this value as needed)
-      audio.addEventListener("loadeddata", () => {
-        audio.currentTime = 0.5; // Skip first 0.5 seconds
-        audio.play().catch((error) => {
-          console.log("Whoosh sound failed:", error);
-        });
+      if (!whooshAudioRef.current) {
+        whooshAudioRef.current = new Audio("/sounds/whoosh-in.wav");
+        whooshAudioRef.current.volume = 0.3;
+        whooshAudioRef.current.preload = "auto";
+      }
+      whooshAudioRef.current.currentTime = 0.5; // Skip silent intro
+      whooshAudioRef.current.play().catch((error) => {
+        console.log("Whoosh sound failed:", error);
       });
-
-      // Fallback if loadeddata doesn't fire
-      setTimeout(() => {
-        if (audio.paused) {
-          audio.currentTime = 0.5;
-          audio.play().catch((error) => {
-            console.log("Whoosh sound failed:", error);
-          });
-        }
-      }, 100);
     } catch (error) {
       console.log("Whoosh sound failed:", error);
-    }
-  };
-
-  // Play zoom-out sound with timing adjustment
-  const playZoomOutSound = () => {
-    try {
-      const audio = new Audio("/sounds/whoosh-in.wav");
-      audio.volume = 0.2;
-      audio.playbackRate = 0.8; // Slightly slower for zoom-out effect
-
-      // Skip the silent part at the beginning
-      audio.addEventListener("loadeddata", () => {
-        audio.currentTime = 0.5; // Skip first 0.5 seconds
-        audio.play().catch((error) => {
-          console.log("Zoom-out sound failed:", error);
-        });
-      });
-
-      // Fallback if loadeddata doesn't fire
-      setTimeout(() => {
-        if (audio.paused) {
-          audio.currentTime = 0.5;
-          audio.play().catch((error) => {
-            console.log("Zoom-out sound failed:", error);
-          });
-        }
-      }, 100);
-    } catch (error) {
-      console.log("Zoom-out sound failed:", error);
     }
   };
 
@@ -123,9 +85,6 @@ function Universe({ active = true }) {
   };
 
   const handleClosePanel = () => {
-    // Play zoom-out sound effect
-    playZoomOutSound();
-
     setSelectedObject(null);
   };
 
@@ -142,6 +101,7 @@ function Universe({ active = true }) {
         }`}
       >
         <Canvas
+          dpr={[1, 2]}
           camera={{ position: [0, 0, 100], fov: 60 }}
           className="w-full h-full"
           shadows
