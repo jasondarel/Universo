@@ -6,7 +6,7 @@ import CelestialObject from "./CelestialObject";
 import InfoPanel from "./InfoPanel";
 import SpaceMusic from "./SpaceMusic";
 import ObjectNavigator from "./ObjectNavigator";
-import { EffectComposer, Bloom, Noise } from "@react-three/postprocessing";
+import { EffectComposer, Bloom, Noise, GodRays } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 import { celestialObjects } from "../data/celestialObjects";
 import { useSmoothProgress } from "../hooks/useSmoothProgress";
@@ -14,6 +14,8 @@ import { useSmoothProgress } from "../hooks/useSmoothProgress";
 function Universe({ active = true }) {
   const [selectedObject, setSelectedObject] = useState(null);
   const [cameraTarget, setCameraTarget] = useState(null);
+  const [sunMesh, setSunMesh] = useState(null);
+  const [isHudExpanded, setIsHudExpanded] = useState(true);
   const { isReady: isSceneReady } = useSmoothProgress();
 
   // Play whoosh sound effect using audio file with timing adjustment
@@ -150,17 +152,8 @@ function Universe({ active = true }) {
           }}
         >
           <Suspense fallback={null}>
-            <ambientLight intensity={0.15} />
-            <pointLight position={[10, 10, 10]} intensity={0.8} castShadow />
-            <pointLight position={[-10, -10, -10]} intensity={0.3} />
-
-            <directionalLight
-              position={[50, 50, 50]}
-              intensity={0.5}
-              castShadow
-              shadow-mapSize-width={2048}
-              shadow-mapSize-height={2048}
-            />
+            {/* Ambient cosmic starlight */}
+            <ambientLight intensity={0.07} />
 
             <Stars
               radius={300}
@@ -174,15 +167,28 @@ function Universe({ active = true }) {
 
             <EffectComposer>
               <Bloom
-                intensity={1.2}
-                luminanceThreshold={0.2}
-                luminanceSmoothing={0.9}
+                intensity={1.4}
+                luminanceThreshold={0.7}
+                luminanceSmoothing={0.3}
+                mipmapBlur
               />
               <Noise
                 premultiply
                 blendFunction={BlendFunction.SCREEN}
-                opacity={0.25}
+                opacity={0.15}
               />
+              {sunMesh && (
+                <GodRays
+                  sun={sunMesh}
+                  samples={60}
+                  density={0.96}
+                  decay={0.92}
+                  weight={0.5}
+                  exposure={0.6}
+                  clampMax={1}
+                  blur
+                />
+              )}
             </EffectComposer>
 
             {/* Celestial objects */}
@@ -191,6 +197,7 @@ function Universe({ active = true }) {
                 key={object.id}
                 object={object}
                 onClick={handleObjectClick}
+                onRegisterSun={setSunMesh}
               />
             ))}
 
@@ -213,33 +220,66 @@ function Universe({ active = true }) {
           <InfoPanel object={selectedObject} onClose={handleClosePanel} />
         )}
 
-        {/* Enhanced UI Instructions */}
-        <div className="absolute top-4 left-4 text-white/70 text-sm z-10">
-          <div className="bg-black/40 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-            <p className="mb-2 text-yellow-300">
-              🌌 Enhanced 3D Interactive Universe
-            </p>
-            <p className="text-xs mb-1">
-              ✨ Realistic textures and lighting effects
-            </p>
-            <p className="text-xs mb-1">
-              🖱️ Click on celestial objects to focus and learn more!
-            </p>
-            <p className="text-xs mb-1">
-              🎬 Smooth camera animations to selected objects
-            </p>
-            <p className="text-xs">
-              🎮 Drag to rotate • Scroll to zoom • Right-click + drag to pan
-            </p>
-          </div>
-        </div>
+        {/* Observatory Flight Deck HUD */}
+        <div className="absolute top-4 left-4 z-20 font-mono">
+          {isHudExpanded ? (
+            <div className="bg-neutral-950/85 backdrop-blur-md rounded-xl border border-neutral-800/80 p-3.5 shadow-xl text-neutral-300 max-w-xs space-y-2.5">
+              <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2">
+                <div className="flex items-center space-x-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                  <span className="font-space font-semibold text-white tracking-wider uppercase text-[11px]">
+                    NAVIGATION HUD
+                  </span>
+                </div>
+                <button
+                  onClick={() => setIsHudExpanded(false)}
+                  className="text-neutral-500 hover:text-white p-0.5 rounded cursor-pointer transition-colors"
+                  title="Collapse HUD"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
 
-        {/* Performance info */}
-        <div className="absolute top-4 right-20 text-white/50 text-xs z-10">
-          <div className="bg-black/40 backdrop-blur-sm rounded-lg p-2 border border-white/10">
-            <p>Enhanced Visuals Active</p>
-            <p>Procedural Textures • Glow Effects</p>
-          </div>
+              <div className="space-y-1.5 text-[11px]">
+                <div className="flex items-center justify-between text-neutral-400">
+                  <span className="text-neutral-200 font-medium">WASD / Drag</span>
+                  <span>Orbit & Roam</span>
+                </div>
+                <div className="flex items-center justify-between text-neutral-400">
+                  <span className="text-neutral-200 font-medium">Scroll</span>
+                  <span>Zoom Focus</span>
+                </div>
+                <div className="flex items-center justify-between text-neutral-400">
+                  <span className="text-neutral-200 font-medium">Click Object</span>
+                  <span>Target & Inspect</span>
+                </div>
+                <div className="flex items-center justify-between text-neutral-400">
+                  <span className="text-neutral-200 font-medium">Right-Drag</span>
+                  <span>Pan Position</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsHudExpanded(true)}
+              className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-neutral-950/85 backdrop-blur-md border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700 transition-all cursor-pointer shadow-lg"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+              <span className="font-space uppercase tracking-wider text-[11px]">CONTROLS</span>
+            </button>
+          )}
         </div>
 
         {/* Object Navigator */}
