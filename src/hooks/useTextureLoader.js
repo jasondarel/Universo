@@ -1,8 +1,44 @@
 import React, { useState, useEffect } from "react";
 import * as THREE from "three";
 
+const textureCache = new Map();
+
+// All explicit textures to preload on application start
+export const PRELOAD_TEXTURES = [
+  "/textures/sun.jpg",
+  "/textures/earth.jpg",
+  "/textures/gliese.jpg",
+  "/textures/hd.jpg",
+  "/textures/hoth.jpg",
+  "/textures/vulcan.jpg",
+  "/textures/saturn.jpg",
+  "/textures/deathstar.jpg",
+  "/textures/ring.png",
+];
+
+// Preload textures immediately using THREE.DefaultLoadingManager
+if (typeof window !== "undefined") {
+  const loader = new THREE.TextureLoader();
+  PRELOAD_TEXTURES.forEach((path) => {
+    loader.load(
+      path,
+      (tex) => {
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+        textureCache.set(path, tex);
+      },
+      undefined,
+      (err) => console.warn(`Preload failed for ${path}:`, err)
+    );
+  });
+}
+
 export function useTextureLoader(object, gl) {
-  const [texture, setTexture] = useState(null);
+  const initialTex = object.texture
+    ? textureCache.get(`/textures/${object.texture}`) || null
+    : null;
+  const [texture, setTexture] = useState(initialTex);
   const [useGeneratedTexture, setUseGeneratedTexture] = useState(false);
 
   // Helper function to get potential texture filename based on object name
@@ -230,9 +266,18 @@ export function useTextureLoader(object, gl) {
       } catch {}
       // Correct color space (newer three.js)
       if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+      if (object.texture) {
+        textureCache.set(`/textures/${object.texture}`, tex);
+      }
       setTexture(tex);
       setUseGeneratedTexture(false);
     };
+
+    // If explicit texture is already in cache, use it immediately
+    if (object.texture && textureCache.has(`/textures/${object.texture}`)) {
+      setTexture(textureCache.get(`/textures/${object.texture}`));
+      return;
+    }
 
     // 1) If an explicit texture is provided, try that first
     if (object.texture) {
