@@ -50,6 +50,8 @@ function NebulaComponent({ object, onClick }) {
     scene.traverse((child) => {
       if (!child.isMesh && !child.isPoints) return;
       child.userData = { objectId: object.id };
+      // Up to 420k vertices: raycasting them per pointer move costs 15-40ms; the hit sphere handles events
+      child.raycast = () => {};
       if (!child.material) return;
 
       const originalMat = child.material;
@@ -229,22 +231,23 @@ function NebulaComponent({ object, onClick }) {
         ref={groupRef}
         position={[object.position[0], object.position[1], object.position[2]]}
         userData={{ objectId: object.id, isNebulaRoot: true }}
+        onClick={handleClick}
+        onPointerOver={() => {
+          document.body.style.cursor = "pointer";
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = "default";
+        }}
       >
+        {/* Model is normalized to (object.size * 4.2) across, so this sphere matches its extent */}
+        <mesh visible={false}>
+          <sphereGeometry args={[(object.size || 15) * 2.1, 16, 8]} />
+        </mesh>
         <primitive
           ref={meshRef}
           object={clonedScene}
           userData={{ objectId: object.id }}
           scale={[1, 1, 1]}
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick(object);
-          }}
-          onPointerOver={() => {
-            document.body.style.cursor = "pointer";
-          }}
-          onPointerOut={() => {
-            document.body.style.cursor = "default";
-          }}
         />
       </group>
     );

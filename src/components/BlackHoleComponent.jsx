@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
+import * as THREE from "three";
 
 // Preload once
 useGLTF.preload("/models/glb/black_hole.glb");
@@ -20,6 +21,8 @@ function BlackHoleComponent({ object, onClick }) {
     cloned.traverse((child) => {
       if (!child.isMesh || !child.material) return;
 
+      // 232k tris: raycasting them on every pointer move costs 15-45ms; the hit sphere below handles events
+      child.raycast = () => {};
       child.castShadow = true;
       child.receiveShadow = true;
 
@@ -52,6 +55,12 @@ function BlackHoleComponent({ object, onClick }) {
 
     return cloned;
   }, [scene]);
+
+  const hitRadius = useMemo(() => {
+    if (!preparedModel) return 1;
+    const size = new THREE.Box3().setFromObject(preparedModel).getSize(new THREE.Vector3());
+    return Math.max(size.x, size.y, size.z) / 2;
+  }, [preparedModel]);
 
   // Keep rotation animation
   useFrame((state) => {
@@ -92,6 +101,9 @@ function BlackHoleComponent({ object, onClick }) {
         document.body.style.cursor = "default";
       }}
     >
+      <mesh visible={false} scale={baseScale * hoverFactor}>
+        <sphereGeometry args={[hitRadius, 16, 8]} />
+      </mesh>
       <primitive
         ref={modelRef}
         object={preparedModel}

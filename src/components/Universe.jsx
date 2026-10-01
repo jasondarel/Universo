@@ -1,6 +1,6 @@
 import React, { useState, useRef, Suspense, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
-import { Stars } from "@react-three/drei";
+import { Stars, Preload } from "@react-three/drei";
 import CameraController from "./CameraController";
 import CelestialObject from "./CelestialObject";
 import InfoPanel from "./InfoPanel";
@@ -101,12 +101,13 @@ function Universe({ active = true }) {
         }`}
       >
         <Canvas
-          dpr={[1, 2]}
+          // ponytail: capped at 1.5 — bloom + godrays at dpr 2 is the main GPU cost on hi-DPI screens
+          dpr={[1, 1.5]}
           camera={{ position: [0, 0, 100], fov: 60 }}
           className="w-full h-full"
           shadows
           gl={{
-            antialias: true,
+            antialias: false, // EffectComposer does its own MSAA; canvas AA is wasted
             alpha: false,
             powerPreference: "high-performance",
           }}
@@ -160,6 +161,11 @@ function Universe({ active = true }) {
                 onRegisterSun={setSunMesh}
               />
             ))}
+
+            {/* Compile shaders + upload textures behind the start screen, so first views don't hitch.
+                Waits for isSceneReady: planets mount only once their texture loads, and Preload runs once.
+                ponytail: the 3.5s progress fallback can fire it early on slow networks; late objects then warm up lazily */}
+            {isSceneReady && <Preload all />}
 
             {/* Camera controls with animation */}
             <CameraController
