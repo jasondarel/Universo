@@ -230,7 +230,7 @@ function NebulaComponent({ object, onClick }) {
       <group
         ref={groupRef}
         position={[object.position[0], object.position[1], object.position[2]]}
-        userData={{ objectId: object.id, isNebulaRoot: true }}
+        userData={{ objectId: object.id, isTrackedRoot: true }}
         onClick={handleClick}
         onPointerOver={() => {
           document.body.style.cursor = "pointer";
@@ -263,7 +263,7 @@ function NebulaComponent({ object, onClick }) {
     <group
       ref={groupRef}
       position={[object.position[0], object.position[1], object.position[2]]}
-      userData={{ objectId: object.id, isNebulaRoot: true }}
+      userData={{ objectId: object.id, isTrackedRoot: true }}
     >
       {/* Core nebula cloud */}
       <mesh

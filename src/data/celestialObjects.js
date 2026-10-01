@@ -184,4 +184,17 @@ export const celestialObjects = [
     fun_fact:
       "That's no moon... it's a space station! A technological terror capable of destroying entire planets.",
   },
+  {
+    id: 19,
+    type: "comet",
+    name: "Halley's Comet",
+    // Starting point only; the comet moves along `orbit` (a: semi-major axis, e: eccentricity,
+    // tilt/spin: orbit orientation in radians, period: seconds per lap, startAngle: eccentric anomaly)
+    position: [10, -47, -56],
+    color: "#a8e6ff",
+    size: 2,
+    orbit: { a: 250, e: 0.72, tilt: -0.7, spin: 0.95, period: 120, startAngle: -0.2 },
+    fun_fact:
+      "The most famous periodic comet, returning every 75–79 years. Last seen from Earth in 1986, it's due back in 2061.",
+  },
 ];

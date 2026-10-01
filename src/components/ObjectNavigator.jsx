@@ -22,6 +22,10 @@ const GROUP_CONFIG = {
     label: "Superstructures",
     dot: "bg-rose-400",
   },
+  comet: {
+    label: "Comets",
+    dot: "bg-sky-300",
+  },
 };
 
 function ObjectNavigator({ onObjectSelect, selectedObject }) {
@@ -32,6 +36,7 @@ function ObjectNavigator({ onObjectSelect, selectedObject }) {
     nebula: true,
     black_hole: true,
     deathstar: true,
+    comet: true,
   });
 
   // Group objects by type

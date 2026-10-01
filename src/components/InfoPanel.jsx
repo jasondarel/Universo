@@ -27,6 +27,11 @@ const TYPE_CONFIG = {
     badge: "text-rose-400 border-rose-500/30 bg-rose-500/10",
     dot: "bg-rose-400",
   },
+  comet: {
+    label: "PERIODIC COMET",
+    badge: "text-sky-300 border-sky-400/30 bg-sky-400/10",
+    dot: "bg-sky-300",
+  },
 };
 
 function InfoPanel({ object, onClose }) {
@@ -101,7 +106,9 @@ function InfoPanel({ object, onClose }) {
                 Coordinates
               </span>
               <span className="text-neutral-200 font-semibold mt-0.5 block truncate">
-                [{object.position.map((p) => Math.round(p)).join(", ")}]
+                {object.orbit
+                  ? "Orbiting Sol"
+                  : `[${object.position.map((p) => Math.round(p)).join(", ")}]`}
               </span>
             </div>
           </div>

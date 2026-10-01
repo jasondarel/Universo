@@ -10,6 +10,8 @@ const _scratchMove = new THREE.Vector3();
 const _scratchToTarget = new THREE.Vector3();
 const _scratchDynamicCamPos = new THREE.Vector3();
 const _scratchCurrentTargetPos = new THREE.Vector3();
+const _scratchFollowPos = new THREE.Vector3();
+const _scratchFollowDelta = new THREE.Vector3();
 
 function CameraController({ target, onComplete, movementRadius = 290, enabled = true }) {
   const { camera, scene } = useThree();
@@ -19,6 +21,9 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
   const keysRef = useRef({});
   const targetOffsetRef = useRef(new THREE.Vector3());
   const lastFrameRef = useRef(performance.now());
+  // Orbiting target the camera keeps riding along with after arrival (null = not following)
+  const followRef = useRef(null);
+  const lastFollowPosRef = useRef(new THREE.Vector3());
 
   // Input handlers
   useEffect(() => {
@@ -43,6 +48,7 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
       cancelAnimationFrame(animFrameIdRef.current);
       animFrameIdRef.current = null;
     }
+    followRef.current = null;
 
     if (!target || !controlsRef.current) return;
 
@@ -67,21 +73,20 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
     const startPos = camera.position.clone();
     const startTarget = controlsRef.current.target.clone();
 
-    // If targeting a nebula, find the root node ONCE rather than traversing the whole scene every frame
-    let nebulaRootNode = null;
-    if (target.type === "nebula") {
-      scene.traverse((child) => {
-        if (
-          !nebulaRootNode &&
-          child.userData &&
-          child.userData.objectId === target.id &&
-          child.userData.isNebulaRoot
-        ) {
-          nebulaRootNode = child;
-          child.getWorldPosition(actualTargetPos);
-        }
-      });
-    }
+    // Moving objects (floating nebulas, orbiting comets) tag their root node with isTrackedRoot.
+    // Find it ONCE rather than traversing the whole scene every frame
+    let trackedNode = null;
+    scene.traverse((child) => {
+      if (
+        !trackedNode &&
+        child.userData &&
+        child.userData.objectId === target.id &&
+        child.userData.isTrackedRoot
+      ) {
+        trackedNode = child;
+        child.getWorldPosition(actualTargetPos);
+      }
+    });
 
     // Proportional offset vectors so the object is beautifully framed without clipping
     let offsetX = distance * 0.35;
@@ -109,9 +114,9 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
       // Smooth ease-out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
 
-      // Follow floating motion for nebulas via cached node reference
-      if (nebulaRootNode) {
-        nebulaRootNode.getWorldPosition(_scratchCurrentTargetPos);
+      // Follow moving targets via cached node reference
+      if (trackedNode) {
+        trackedNode.getWorldPosition(_scratchCurrentTargetPos);
       } else {
         _scratchCurrentTargetPos.copy(actualTargetPos);
       }
@@ -134,6 +139,11 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
         animFrameIdRef.current = requestAnimationFrame(animate);
       } else {
         animFrameIdRef.current = null;
+        // Keep riding along with orbiting objects; WASD hands control back to the user
+        if (target.orbit && trackedNode) {
+          followRef.current = trackedNode;
+          lastFollowPosRef.current.copy(_scratchCurrentTargetPos);
+        }
         setIsAnimating(false);
         if (onComplete) onComplete();
       }
@@ -158,6 +168,16 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
     const now = performance.now();
     const dt = Math.min(0.05, (now - lastFrameRef.current) / 1000); // clamp delta
     lastFrameRef.current = now;
+
+    // Shift camera + aim point by the target's movement, so the user's framing and orbit-drag are kept.
+    // No controls.update() needed: both moved equally, so the view direction is unchanged
+    if (followRef.current) {
+      followRef.current.getWorldPosition(_scratchFollowPos);
+      _scratchFollowDelta.subVectors(_scratchFollowPos, lastFollowPosRef.current);
+      lastFollowPosRef.current.copy(_scratchFollowPos);
+      camera.position.add(_scratchFollowDelta);
+      controlsRef.current.target.add(_scratchFollowDelta);
+    }
 
     const speedBase = 80; // units per second
     const boost = keysRef.current["shift"] ? 2.2 : 1;
@@ -193,6 +213,7 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
       moved = true;
     }
     if (!moved) return;
+    followRef.current = null; // manual flight stops following
 
     _scratchMove.normalize().multiplyScalar(speed * dt);
 
