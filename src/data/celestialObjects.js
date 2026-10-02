@@ -35,9 +35,16 @@ export const celestialObjects = [
     id: 4,
     type: "nebula",
     name: "Orion Nebula",
-    position: [-400, 150, 100],
+    // Nebulae are backdrop: only the direction of `position` is used (they stay put as you move),
+    // and `size` is how many degrees of sky the photo spans. See NebulaComponent
+    position: [-225, 145, -420],
     color: "#fd79a8",
-    size: 15,
+    texture: "orion.jpg",
+    size: 30,
+    extent: "~24 light-years",
+    distance: "~1,270 light-years",
+    credit:
+      "NASA, ESA, M. Robberto (Space Telescope Science Institute/ESA) and the Hubble Space Telescope Orion Treasury Project Team",
     fun_fact:
       "A stellar nursery where new stars are born from cosmic dust and gas.",
   },
@@ -76,7 +83,12 @@ export const celestialObjects = [
     name: "Crab Nebula",
     position: [200, 75, 450],
     color: "#a29bfe",
-    size: 12,
+    texture: "crab.jpg",
+    size: 22,
+    extent: "~11 light-years",
+    distance: "~6,500 light-years",
+    credit:
+      "NASA, ESA and Allison Loll/Jeff Hester (Arizona State University). Acknowledgement: Davide De Martin (ESA/Hubble)",
     fun_fact:
       "The remnant of a supernova observed by Chinese astronomers in 1054 CE.",
   },
@@ -106,7 +118,11 @@ export const celestialObjects = [
     position: [350, -50, 95],
     // Adjusted to a brighter pink to differentiate from Crab Nebula
     color: "#ff69b4",
-    size: 18,
+    texture: "eagle.jpg",
+    size: 28,
+    extent: "~70 × 55 light-years",
+    distance: "~5,700 light-years",
+    credit: "NASA, ESA/Hubble and the Hubble Heritage Team",
     fun_fact: 'Home to the famous "Pillars of Creation" stellar formation.',
   },
   {
@@ -135,7 +151,11 @@ export const celestialObjects = [
     name: "Horsehead Nebula",
     position: [425, 125, -125],
     color: "#6c5ce7",
-    size: 14,
+    texture: "horsehead.jpg",
+    size: 20,
+    extent: "~3.5 light-years",
+    distance: "~1,375 light-years",
+    credit: "NASA, ESA, and the Hubble Heritage Team (AURA/STScI)",
     fun_fact:
       "A dark nebula silhouetted against the bright Orion constellation.",
   },

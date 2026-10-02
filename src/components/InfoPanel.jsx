@@ -94,21 +94,22 @@ function InfoPanel({ object, onClose }) {
           <div className="grid grid-cols-2 gap-2 mb-4 font-mono text-xs">
             <div className="p-2.5 rounded-lg bg-neutral-900/60 border border-neutral-800/80">
               <span className="text-[10px] text-neutral-500 uppercase block tracking-wider">
-                Relative Scale
+                {object.extent ? "Size" : "Relative Scale"}
               </span>
               <span className="text-neutral-200 font-semibold mt-0.5 block">
-                {object.size}x units
+                {object.extent || `${object.size}x units`}
               </span>
             </div>
 
             <div className="p-2.5 rounded-lg bg-neutral-900/60 border border-neutral-800/80">
               <span className="text-[10px] text-neutral-500 uppercase block tracking-wider">
-                Coordinates
+                {object.distance ? "Distance" : "Coordinates"}
               </span>
               <span className="text-neutral-200 font-semibold mt-0.5 block truncate">
-                {object.orbit
-                  ? "Orbiting Sol"
-                  : `[${object.position.map((p) => Math.round(p)).join(", ")}]`}
+                {object.distance ||
+                  (object.orbit
+                    ? "Orbiting Sol"
+                    : `[${object.position.map((p) => Math.round(p)).join(", ")}]`)}
               </span>
             </div>
           </div>
@@ -121,6 +122,11 @@ function InfoPanel({ object, onClose }) {
             <p className="text-xs text-neutral-300 leading-relaxed font-normal">
               {object.fun_fact}
             </p>
+            {object.credit && (
+              <p className="mt-2 text-[10px] text-neutral-500 leading-snug">
+                Image: {object.credit}
+              </p>
+            )}
           </div>
         </div>
       </motion.div>

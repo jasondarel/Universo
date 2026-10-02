@@ -103,7 +103,8 @@ function Universe({ active = true }) {
         <Canvas
           // ponytail: capped at 1.5 — bloom + godrays at dpr 2 is the main GPU cost on hi-DPI screens
           dpr={[1, 1.5]}
-          camera={{ position: [0, 0, 100], fov: 60 }}
+          // far covers the nebula backdrop at 1500 (see NebulaComponent)
+          camera={{ position: [0, 0, 100], fov: 60, far: 2000 }}
           className="w-full h-full"
           shadows
           gl={{
@@ -170,6 +171,7 @@ function Universe({ active = true }) {
             {/* Camera controls with animation */}
             <CameraController
               target={cameraTarget}
+              selected={selectedObject}
               onComplete={handleCameraAnimationComplete}
               enabled={active}
             />

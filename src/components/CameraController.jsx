@@ -12,11 +12,13 @@ const _scratchDynamicCamPos = new THREE.Vector3();
 const _scratchCurrentTargetPos = new THREE.Vector3();
 const _scratchFollowPos = new THREE.Vector3();
 const _scratchFollowDelta = new THREE.Vector3();
+const _scratchTurn = new THREE.Quaternion();
 
-function CameraController({ target, onComplete, movementRadius = 290, enabled = true }) {
+function CameraController({ target, selected, onComplete, movementRadius = 290, enabled = true }) {
   const { camera, scene } = useThree();
   const controlsRef = useRef();
   const [isAnimating, setIsAnimating] = useState(false);
+  const [baseFov] = useState(camera.fov);
   const animFrameIdRef = useRef(null);
   const keysRef = useRef({});
   const targetOffsetRef = useRef(new THREE.Vector3());
@@ -61,9 +63,6 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
     if (target.hasRings) {
       // Planetary rings extend up to 3.2x planet size
       distance = Math.max(distance, objectSize * 5.5);
-    } else if (target.type === "nebula") {
-      // Nebulae are sprawling cosmic gas clouds; frame with cinematic breathing room
-      distance = Math.max(distance, objectSize * 7.5);
     } else if (target.name && (target.name.includes("Sun") || target.name.includes("Sol"))) {
       // Sol is size 30; frame at a comfortable distance so it doesn't overflow screen
       distance = 115;
@@ -73,7 +72,13 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
     const startPos = camera.position.clone();
     const startTarget = controlsRef.current.target.clone();
 
-    // Moving objects (floating nebulas, orbiting comets) tag their root node with isTrackedRoot.
+    // Backdrop nebulae follow the camera, so a flight would never arrive: turn in place to face them instead
+    const isBackdrop = target.type === "nebula";
+    const aimDir = startTarget.clone().sub(startPos).normalize();
+    const aimRadius = startPos.distanceTo(startTarget);
+    const turn = new THREE.Quaternion().setFromUnitVectors(aimDir, actualTargetPos.clone().normalize());
+
+    // Moving objects (orbiting comets) tag their root node with isTrackedRoot.
     // Find it ONCE rather than traversing the whole scene every frame
     let trackedNode = null;
     scene.traverse((child) => {
@@ -89,19 +94,7 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
     });
 
     // Proportional offset vectors so the object is beautifully framed without clipping
-    let offsetX = distance * 0.35;
-    let offsetY = distance * 0.22;
-    let offsetZ = distance;
-
-    if (target.type === "nebula") {
-      // Position camera between origin and nebula, looking outward into deep space (keeping Sol behind camera)
-      const toNebula = new THREE.Vector3(...target.position).normalize();
-      offsetX = -toNebula.x * distance + distance * 0.2;
-      offsetY = -toNebula.y * distance + distance * 0.25;
-      offsetZ = -toNebula.z * distance;
-    }
-
-    targetOffsetRef.current.set(offsetX, offsetY, offsetZ);
+    targetOffsetRef.current.set(distance * 0.35, distance * 0.22, distance);
 
     let progress = 0;
     const duration = 2000; // 2 seconds
@@ -114,25 +107,36 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
       // Smooth ease-out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
 
-      // Follow moving targets via cached node reference
-      if (trackedNode) {
-        trackedNode.getWorldPosition(_scratchCurrentTargetPos);
-      } else {
-        _scratchCurrentTargetPos.copy(actualTargetPos);
-      }
-
-      // Interpolate camera position
-      _scratchDynamicCamPos.copy(_scratchCurrentTargetPos).add(targetOffsetRef.current);
-      camera.position.lerpVectors(startPos, _scratchDynamicCamPos, eased);
-
-      // Interpolate camera target
-      if (controlsRef.current) {
-        controlsRef.current.target.lerpVectors(
-          startTarget,
-          _scratchCurrentTargetPos,
-          eased
-        );
+      if (isBackdrop) {
+        // Swing the aim point around the camera at the same orbit radius; the camera itself stays put
+        _scratchTurn.identity().slerp(turn, eased);
+        controlsRef.current.target
+          .copy(aimDir)
+          .applyQuaternion(_scratchTurn)
+          .multiplyScalar(aimRadius)
+          .add(startPos);
         controlsRef.current.update();
+      } else {
+        // Follow moving targets via cached node reference
+        if (trackedNode) {
+          trackedNode.getWorldPosition(_scratchCurrentTargetPos);
+        } else {
+          _scratchCurrentTargetPos.copy(actualTargetPos);
+        }
+
+        // Interpolate camera position
+        _scratchDynamicCamPos.copy(_scratchCurrentTargetPos).add(targetOffsetRef.current);
+        camera.position.lerpVectors(startPos, _scratchDynamicCamPos, eased);
+
+        // Interpolate camera target
+        if (controlsRef.current) {
+          controlsRef.current.target.lerpVectors(
+            startTarget,
+            _scratchCurrentTargetPos,
+            eased
+          );
+          controlsRef.current.update();
+        }
       }
 
       if (progress < 1) {
@@ -158,6 +162,14 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
       }
     };
   }, [target, camera, scene, onComplete]);
+
+  // Telescope zoom while a nebula's panel is open, back to the normal view otherwise
+  useFrame((_, delta) => {
+    const fov = selected?.type === "nebula" ? selected.size * 1.25 : baseFov;
+    if (Math.abs(camera.fov - fov) < 0.01) return;
+    camera.fov = THREE.MathUtils.damp(camera.fov, fov, 3, delta);
+    camera.updateProjectionMatrix();
+  });
 
   // WASD movement integrated with OrbitControls aim point
   useFrame(() => {
@@ -249,7 +261,8 @@ function CameraController({ target, onComplete, movementRadius = 290, enabled = 
         zoomSpeed={0.8}
         panSpeed={0.8}
         rotateSpeed={0.4}
-        minDistance={target ? Math.max(15, (target.size || 5) * 1.3) : 15}
+        // Nebula size is degrees of sky, not world units
+        minDistance={target && target.type !== "nebula" ? Math.max(15, (target.size || 5) * 1.3) : 15}
         maxDistance={500}
       />
     </>

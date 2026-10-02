@@ -157,6 +157,7 @@ function CometComponent({ object, onClick }) {
   });
 
   const handleClick = (e) => {
+    if (e.delta > 5) return; // ended a drag, not a click
     e.stopPropagation();
     onClick(object);
   };

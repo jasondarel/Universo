@@ -14,6 +14,10 @@ export const PRELOAD_TEXTURES = [
   "/textures/saturn.jpg",
   "/textures/deathstar.jpg",
   "/textures/ring.png",
+  "/textures/orion.jpg",
+  "/textures/crab.jpg",
+  "/textures/eagle.jpg",
+  "/textures/horsehead.jpg",
 ];
 
 // Preload textures immediately using THREE.DefaultLoadingManager
