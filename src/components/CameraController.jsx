@@ -6,15 +6,24 @@ import * as THREE from "three";
 // Reusable scratch vectors to avoid per-frame heap allocations during flight & animation
 const _scratchRight = new THREE.Vector3();
 const _scratchForward = new THREE.Vector3();
-const _scratchMove = new THREE.Vector3();
-const _scratchToTarget = new THREE.Vector3();
+const _scratchUp = new THREE.Vector3();
+const _scratchWish = new THREE.Vector3();
+const _scratchStep = new THREE.Vector3();
+const _scratchNormal = new THREE.Vector3();
 const _scratchDynamicCamPos = new THREE.Vector3();
 const _scratchCurrentTargetPos = new THREE.Vector3();
 const _scratchFollowPos = new THREE.Vector3();
 const _scratchFollowDelta = new THREE.Vector3();
 const _scratchTurn = new THREE.Quaternion();
 
-function CameraController({ target, selected, onComplete, movementRadius = 290, enabled = true }) {
+// Flight feel tuning knobs
+const CRUISE_SPEED = 80; // units/s
+const BOOST = 2.5; // Shift multiplier
+const ACCEL = 4; // 1/s: how fast you reach the wanted speed (higher = snappier)
+const GLIDE = 2.5; // 1/s: how fast you coast to a stop after letting go (lower = floatier)
+const BOOST_FOV = 8; // degrees the view widens at full boost, for a sense of speed
+
+function CameraController({ target, selected, onComplete, movementRadius = 650, enabled = true }) {
   const { camera, scene } = useThree();
   const controlsRef = useRef();
   const [isAnimating, setIsAnimating] = useState(false);
@@ -22,7 +31,8 @@ function CameraController({ target, selected, onComplete, movementRadius = 290, 
   const animFrameIdRef = useRef(null);
   const keysRef = useRef({});
   const targetOffsetRef = useRef(new THREE.Vector3());
-  const lastFrameRef = useRef(performance.now());
+  const velocityRef = useRef(new THREE.Vector3());
+  const lastCamPosRef = useRef(camera.position.clone());
   // Orbiting target the camera keeps riding along with after arrival (null = not following)
   const followRef = useRef(null);
   const lastFollowPosRef = useRef(new THREE.Vector3());
@@ -36,11 +46,17 @@ function CameraController({ target, selected, onComplete, movementRadius = 290, 
     const up = (e) => {
       keysRef.current[e.key.toLowerCase()] = false;
     };
+    // Keyups are lost while the window is unfocused; without this a held key would fly you forever
+    const clear = () => {
+      keysRef.current = {};
+    };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
+    window.addEventListener("blur", clear);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", clear);
     };
   }, [enabled]);
 
@@ -55,6 +71,7 @@ function CameraController({ target, selected, onComplete, movementRadius = 290, 
     if (!target || !controlsRef.current) return;
 
     setIsAnimating(true);
+    velocityRef.current.set(0, 0, 0); // the flight takes over from any coasting
 
     // Calculate optimal camera framing distance dynamically based on object size & type
     const objectSize = target.size || 8;
@@ -97,15 +114,18 @@ function CameraController({ target, selected, onComplete, movementRadius = 290, 
     targetOffsetRef.current.set(distance * 0.35, distance * 0.22, distance);
 
     let progress = 0;
-    const duration = 2000; // 2 seconds
+    // Longer trips take longer, so short hops don't crawl and cross-map flights don't blur past
+    const duration = isBackdrop
+      ? 1500
+      : THREE.MathUtils.clamp(800 + startPos.distanceTo(actualTargetPos) * 4, 1200, 3500);
     const startTime = performance.now();
 
     const animate = (now) => {
       const elapsed = now - startTime;
       progress = Math.min(elapsed / duration, 1);
 
-      // Smooth ease-out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
+      // Ease in and out: spool up, cruise, settle (no jolt at take-off)
+      const eased = progress < 0.5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2;
 
       if (isBackdrop) {
         // Swing the aim point around the camera at the same orbit radius; the camera itself stays put
@@ -163,91 +183,91 @@ function CameraController({ target, selected, onComplete, movementRadius = 290, 
     };
   }, [target, camera, scene, onComplete]);
 
-  // Telescope zoom while a nebula's panel is open, back to the normal view otherwise
+  // Telescope zoom while a nebula's panel is open, plus a slight widening at boost speed
   useFrame((_, delta) => {
-    const fov = selected?.type === "nebula" ? selected.size * 1.25 : baseFov;
+    const boosting = THREE.MathUtils.clamp(
+      (velocityRef.current.length() - CRUISE_SPEED) / (CRUISE_SPEED * (BOOST - 1)),
+      0,
+      1
+    );
+    const fov = (selected?.type === "nebula" ? selected.size * 1.25 : baseFov) + BOOST_FOV * boosting;
     if (Math.abs(camera.fov - fov) < 0.01) return;
     camera.fov = THREE.MathUtils.damp(camera.fov, fov, 3, delta);
     camera.updateProjectionMatrix();
   });
 
-  // WASD movement integrated with OrbitControls aim point
-  useFrame(() => {
-    if (!enabled || !controlsRef.current || isAnimating) {
-      lastFrameRef.current = performance.now();
-      return;
-    }
-    const now = performance.now();
-    const dt = Math.min(0.05, (now - lastFrameRef.current) / 1000); // clamp delta
-    lastFrameRef.current = now;
+  // Game-style flight: momentum, fly where you look, and a soft edge instead of a wall.
+  // Camera and aim point always move together, so no controls.update() is needed (drei's own loop runs it)
+  useFrame((_, delta) => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+    const dt = Math.min(delta, 0.05); // clamped so a backgrounded tab doesn't fling the camera
+    const keys = keysRef.current;
+    const velocity = velocityRef.current;
 
-    // Shift camera + aim point by the target's movement, so the user's framing and orbit-drag are kept.
-    // No controls.update() needed: both moved equally, so the view direction is unchanged
+    // Shift camera + aim point by the target's movement, so the user's framing and orbit-drag are kept
     if (followRef.current) {
       followRef.current.getWorldPosition(_scratchFollowPos);
       _scratchFollowDelta.subVectors(_scratchFollowPos, lastFollowPosRef.current);
       lastFollowPosRef.current.copy(_scratchFollowPos);
       camera.position.add(_scratchFollowDelta);
-      controlsRef.current.target.add(_scratchFollowDelta);
+      controls.target.add(_scratchFollowDelta);
     }
 
-    const speedBase = 80; // units per second
-    const boost = keysRef.current["shift"] ? 2.2 : 1;
-    const speed = speedBase * boost;
-
-    // Direction vectors from camera matrix - reuse pre-allocated scratch vectors
-    const cameraMatrix = camera.matrixWorld;
-    _scratchRight.setFromMatrixColumn(cameraMatrix, 0); // camera's X axis (right)
-    _scratchForward.setFromMatrixColumn(cameraMatrix, 2).negate(); // camera's -Z axis (forward)
-
-    // Keep movement level (no vertical component)
-    _scratchRight.y = 0;
-    _scratchForward.y = 0;
-    _scratchRight.normalize();
-    _scratchForward.normalize();
-
-    _scratchMove.set(0, 0, 0);
-    let moved = false;
-    if (keysRef.current["w"]) {
-      _scratchMove.add(_scratchForward);
-      moved = true;
+    // Wanted direction from the camera's axes: W/S along the view (pitch included), A/D strafe, Q/E down/up
+    _scratchWish.set(0, 0, 0);
+    if (enabled) {
+      _scratchForward.setFromMatrixColumn(camera.matrixWorld, 2).negate();
+      _scratchRight.setFromMatrixColumn(camera.matrixWorld, 0);
+      _scratchUp.setFromMatrixColumn(camera.matrixWorld, 1);
+      if (keys.w) _scratchWish.add(_scratchForward);
+      if (keys.s) _scratchWish.sub(_scratchForward);
+      if (keys.d) _scratchWish.add(_scratchRight);
+      if (keys.a) _scratchWish.sub(_scratchRight);
+      if (keys.e) _scratchWish.add(_scratchUp);
+      if (keys.q) _scratchWish.sub(_scratchUp);
     }
-    if (keysRef.current["s"]) {
-      _scratchMove.sub(_scratchForward);
-      moved = true;
-    }
-    if (keysRef.current["a"]) {
-      _scratchMove.sub(_scratchRight); // A = move left
-      moved = true;
-    }
-    if (keysRef.current["d"]) {
-      _scratchMove.add(_scratchRight); // D = move right
-      moved = true;
-    }
-    if (!moved) return;
-    followRef.current = null; // manual flight stops following
+    const steering = _scratchWish.lengthSq() > 0;
 
-    _scratchMove.normalize().multiplyScalar(speed * dt);
-
-    // Move both camera and OrbitControls target to translate through space
-    camera.position.add(_scratchMove);
-    if (controlsRef.current) {
-      controlsRef.current.target.add(_scratchMove);
-      controlsRef.current.update();
-    }
-
-    // Boundary clamp (stay within movementRadius sphere)
-    const len = camera.position.length();
-    if (len > movementRadius) {
-      camera.position.setLength(movementRadius);
-      // Keep target at same relative offset
-      _scratchToTarget.subVectors(controlsRef.current.target, camera.position);
-      if (_scratchToTarget.length() > 600) {
-        _scratchToTarget.setLength(600);
-        controlsRef.current.target.copy(camera.position).add(_scratchToTarget);
+    if (steering) {
+      followRef.current = null; // manual flight stops following
+      if (isAnimating) {
+        // Taking the controls mid-flight keeps the flight's momentum instead of stopping dead
+        cancelAnimationFrame(animFrameIdRef.current);
+        animFrameIdRef.current = null;
+        setIsAnimating(false);
+        velocity
+          .subVectors(camera.position, lastCamPosRef.current)
+          .divideScalar(dt)
+          .clampLength(0, CRUISE_SPEED * BOOST);
       }
-      controlsRef.current.update();
+      _scratchWish.normalize().multiplyScalar(CRUISE_SPEED * (keys.shift ? BOOST : 1));
+    } else if (isAnimating) {
+      lastCamPosRef.current.copy(camera.position); // the fly-to drives the camera
+      return;
     }
+
+    // Ease toward the wanted velocity, or coast to a stop with no input (frame-rate independent)
+    velocity.lerp(_scratchWish, 1 - Math.exp(-(steering ? ACCEL : GLIDE) * dt));
+    if (!steering && velocity.lengthSq() < 0.01) velocity.set(0, 0, 0);
+
+    if (velocity.lengthSq() > 0) {
+      _scratchStep.copy(velocity).multiplyScalar(dt);
+      camera.position.add(_scratchStep);
+      controls.target.add(_scratchStep);
+
+      // Soft edge: past movementRadius, drop the outward speed and ease back inside instead of snapping
+      const len = camera.position.length();
+      if (len > movementRadius) {
+        _scratchNormal.copy(camera.position).divideScalar(len);
+        const outward = velocity.dot(_scratchNormal);
+        if (outward > 0) velocity.addScaledVector(_scratchNormal, -outward);
+        const pull = (len - movementRadius) * (1 - Math.exp(-3 * dt));
+        camera.position.addScaledVector(_scratchNormal, -pull);
+        controls.target.addScaledVector(_scratchNormal, -pull);
+      }
+    }
+    lastCamPosRef.current.copy(camera.position);
   });
 
   return (

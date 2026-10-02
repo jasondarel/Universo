@@ -73,7 +73,8 @@ function Universe({ active = true }) {
     playWhooshSound();
 
     setSelectedObject(object);
-    setCameraTarget(object);
+    // Fresh reference so re-selecting the same object flies again (e.g. after taking over mid-flight)
+    setCameraTarget({ ...object });
 
     // Ensure music is playing when user interacts with objects
     const audio = document.getElementById("space-music-global");
@@ -221,22 +222,20 @@ function Universe({ active = true }) {
               </div>
 
               <div className="space-y-1.5 text-[11px]">
-                <div className="flex items-center justify-between text-neutral-400">
-                  <span className="text-neutral-200 font-medium">WASD / Drag</span>
-                  <span>Orbit & Roam</span>
-                </div>
-                <div className="flex items-center justify-between text-neutral-400">
-                  <span className="text-neutral-200 font-medium">Scroll</span>
-                  <span>Zoom Focus</span>
-                </div>
-                <div className="flex items-center justify-between text-neutral-400">
-                  <span className="text-neutral-200 font-medium">Click Object</span>
-                  <span>Target & Inspect</span>
-                </div>
-                <div className="flex items-center justify-between text-neutral-400">
-                  <span className="text-neutral-200 font-medium">Right-Drag</span>
-                  <span>Pan Position</span>
-                </div>
+                {[
+                  ["WASD", "Fly Where You Look"],
+                  ["Q / E", "Down / Up"],
+                  ["Shift", "Boost"],
+                  ["Drag", "Orbit"],
+                  ["Scroll", "Zoom Focus"],
+                  ["Click Object", "Target & Inspect"],
+                  ["Right-Drag", "Pan Position"],
+                ].map(([keys, action]) => (
+                  <div key={keys} className="flex items-center justify-between gap-4 text-neutral-400">
+                    <span className="text-neutral-200 font-medium">{keys}</span>
+                    <span>{action}</span>
+                  </div>
+                ))}
               </div>
             </div>
           ) : (
