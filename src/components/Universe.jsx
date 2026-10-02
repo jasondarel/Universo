@@ -11,6 +11,8 @@ import { BlendFunction } from "postprocessing";
 import { celestialObjects } from "../data/celestialObjects";
 import { useSmoothProgress } from "../hooks/useSmoothProgress";
 
+const sol = celestialObjects.find((o) => o.name.startsWith("Sol"));
+
 function Universe({ active = true }) {
   const [selectedObject, setSelectedObject] = useState(null);
   const [cameraTarget, setCameraTarget] = useState(null);
@@ -84,6 +86,18 @@ function Universe({ active = true }) {
       });
     }
   };
+
+  // H flies home to Sol and closes any open panel, for when you're lost in space
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!active || e.repeat || e.key.toLowerCase() !== "h") return;
+      playWhooshSound();
+      setSelectedObject(null);
+      setCameraTarget({ ...sol });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [active]);
 
   const handleClosePanel = () => {
     setSelectedObject(null);
@@ -226,10 +240,11 @@ function Universe({ active = true }) {
                   ["WASD", "Fly Where You Look"],
                   ["Q / E", "Down / Up"],
                   ["Shift", "Boost"],
-                  ["Drag", "Orbit"],
-                  ["Scroll", "Zoom Focus"],
+                  ["Drag", "Look / Orbit Target"],
+                  ["Scroll", "Thrust / Zoom Target"],
+                  ["Right-Drag", "Pan Target"],
                   ["Click Object", "Target & Inspect"],
-                  ["Right-Drag", "Pan Position"],
+                  ["H", "Home to Sol"],
                 ].map(([keys, action]) => (
                   <div key={keys} className="flex items-center justify-between gap-4 text-neutral-400">
                     <span className="text-neutral-200 font-medium">{keys}</span>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
@@ -22,11 +22,16 @@ const BOOST = 2.5; // Shift multiplier
 const ACCEL = 4; // 1/s: how fast you reach the wanted speed (higher = snappier)
 const GLIDE = 2.5; // 1/s: how fast you coast to a stop after letting go (lower = floatier)
 const BOOST_FOV = 8; // degrees the view widens at full boost, for a sense of speed
+const SCROLL_THRUST = 0.6; // units/s of thrust per pixel of scroll while free-looking
+const LOOK_PIVOT = 1; // free-look orbits a point this close ahead, which is turning in place
 
 function CameraController({ target, selected, onComplete, movementRadius = 650, enabled = true }) {
-  const { camera, scene } = useThree();
+  const { camera, scene, gl } = useThree();
   const controlsRef = useRef();
   const [isAnimating, setIsAnimating] = useState(false);
+  // Free-look while flying (drag turns the view in place); orbit mode around a selected object otherwise
+  const [freeLook, setFreeLook] = useState(false);
+  const freeLookRef = useRef(false);
   const [baseFov] = useState(camera.fov);
   const animFrameIdRef = useRef(null);
   const keysRef = useRef({});
@@ -60,6 +65,39 @@ function CameraController({ target, selected, onComplete, movementRadius = 650, 
     };
   }, [enabled]);
 
+  const setLookMode = useCallback(
+    (on) => {
+      const controls = controlsRef.current;
+      if (!controls || freeLookRef.current === on) return;
+      freeLookRef.current = on;
+      if (on) {
+        // Pull the pivot in along the current view, so nothing visibly moves
+        _scratchForward.subVectors(controls.target, camera.position).normalize();
+        controls.target.copy(camera.position).addScaledVector(_scratchForward, LOOK_PIVOT);
+        // Applied now, not on the next render, so the controls never push the camera back out to minDistance
+        controls.minDistance = 0;
+        controls.enableZoom = false;
+        controls.enablePan = false;
+      }
+      setFreeLook(on);
+    },
+    [camera]
+  );
+
+  // While free-looking, scroll is a smooth forward/back thrust (in orbit mode the controls zoom instead)
+  useEffect(() => {
+    const onWheel = (e) => {
+      if (!enabled || !freeLookRef.current) return;
+      const pixels = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY; // Firefox scrolls in lines
+      _scratchForward.setFromMatrixColumn(camera.matrixWorld, 2).negate();
+      velocityRef.current
+        .addScaledVector(_scratchForward, -pixels * SCROLL_THRUST)
+        .clampLength(0, CRUISE_SPEED * BOOST);
+    };
+    gl.domElement.addEventListener("wheel", onWheel, { passive: true });
+    return () => gl.domElement.removeEventListener("wheel", onWheel);
+  }, [gl, camera, enabled]);
+
   useEffect(() => {
     // Cancel any ongoing animation loop before starting a new one
     if (animFrameIdRef.current) {
@@ -85,12 +123,14 @@ function CameraController({ target, selected, onComplete, movementRadius = 650, 
       distance = 115;
     }
 
+    // Backdrop nebulae follow the camera, so a flight would never arrive: turn in place (free-look) to face
+    // them instead. Everything else is flown to and then orbited
+    const isBackdrop = target.type === "nebula";
+    setLookMode(isBackdrop);
+
     const actualTargetPos = new THREE.Vector3(...target.position);
     const startPos = camera.position.clone();
     const startTarget = controlsRef.current.target.clone();
-
-    // Backdrop nebulae follow the camera, so a flight would never arrive: turn in place to face them instead
-    const isBackdrop = target.type === "nebula";
     const aimDir = startTarget.clone().sub(startPos).normalize();
     const aimRadius = startPos.distanceTo(startTarget);
     const turn = new THREE.Quaternion().setFromUnitVectors(aimDir, actualTargetPos.clone().normalize());
@@ -181,7 +221,7 @@ function CameraController({ target, selected, onComplete, movementRadius = 650, 
         animFrameIdRef.current = null;
       }
     };
-  }, [target, camera, scene, onComplete]);
+  }, [target, camera, scene, onComplete, setLookMode]);
 
   // Telescope zoom while a nebula's panel is open, plus a slight widening at boost speed
   useFrame((_, delta) => {
@@ -231,6 +271,7 @@ function CameraController({ target, selected, onComplete, movementRadius = 650, 
 
     if (steering) {
       followRef.current = null; // manual flight stops following
+      setLookMode(true);
       if (isAnimating) {
         // Taking the controls mid-flight keeps the flight's momentum instead of stopping dead
         cancelAnimationFrame(animFrameIdRef.current);
@@ -275,14 +316,16 @@ function CameraController({ target, selected, onComplete, movementRadius = 650, 
       <OrbitControls
         ref={controlsRef}
         enabled={enabled && !isAnimating}
-        enableZoom={enabled}
-        enablePan={enabled}
+        enableZoom={enabled && !freeLook}
+        enablePan={enabled && !freeLook}
         enableRotate={enabled}
         zoomSpeed={0.8}
         panSpeed={0.8}
         rotateSpeed={0.4}
-        // Nebula size is degrees of sky, not world units
-        minDistance={target && target.type !== "nebula" ? Math.max(15, (target.size || 5) * 1.3) : 15}
+        // Free-look keeps the pivot right ahead; nebula size is degrees of sky, not world units
+        minDistance={
+          freeLook ? 0 : target && target.type !== "nebula" ? Math.max(15, (target.size || 5) * 1.3) : 15
+        }
         maxDistance={500}
       />
     </>
