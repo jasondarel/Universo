@@ -52,7 +52,7 @@ function CameraController({ target, selected, onComplete, movementRadius = 650, 
   // Input handlers
   useEffect(() => {
     const down = (e) => {
-      if (!enabled) return;
+      if (!enabled || e.target instanceof HTMLInputElement) return; // typing in the catalog search isn't flying
       keysRef.current[e.key.toLowerCase()] = true;
     };
     const up = (e) => {

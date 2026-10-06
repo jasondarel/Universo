@@ -90,7 +90,7 @@ function Universe({ active = true }) {
   // H flies home to Sol and closes any open panel, for when you're lost in space
   useEffect(() => {
     const onKey = (e) => {
-      if (!active || e.repeat || e.key.toLowerCase() !== "h") return;
+      if (!active || e.repeat || e.key.toLowerCase() !== "h" || e.target instanceof HTMLInputElement) return;
       playWhooshSound();
       setSelectedObject(null);
       setCameraTarget({ ...sol });
@@ -245,6 +245,7 @@ function Universe({ active = true }) {
                   ["Right-Drag", "Pan Target"],
                   ["Click Object", "Target & Inspect"],
                   ["H", "Home to Sol"],
+                  ["Ctrl / ⌘ F", "Search Catalog"],
                 ].map(([keys, action]) => (
                   <div key={keys} className="flex items-center justify-between gap-4 text-neutral-400">
                     <span className="text-neutral-200 font-medium">{keys}</span>
@@ -266,6 +267,7 @@ function Universe({ active = true }) {
 
         {/* Object Navigator */}
         <ObjectNavigator
+          active={active}
           onObjectSelect={handleObjectClick}
           selectedObject={selectedObject}
         />

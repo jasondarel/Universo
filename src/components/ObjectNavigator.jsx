@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { celestialObjects } from "../data/celestialObjects";
+
+const MOD_KEY = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
 
 const GROUP_CONFIG = {
   star: {
@@ -28,8 +30,10 @@ const GROUP_CONFIG = {
   },
 };
 
-function ObjectNavigator({ onObjectSelect, selectedObject }) {
+function ObjectNavigator({ onObjectSelect, selectedObject, active = true }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const searchRef = useRef(null);
   const [expandedGroups, setExpandedGroups] = useState({
     star: true,
     planet: true,
@@ -51,6 +55,39 @@ function ObjectNavigator({ onObjectSelect, selectedObject }) {
     return groups;
   }, []);
 
+  // Match on name or group label, so "nebula" lists every nebula
+  const q = query.trim().toLowerCase();
+  const visibleGroups = Object.entries(groupedObjects)
+    .map(([type, objects]) => [
+      type,
+      q
+        ? objects.filter(
+            (o) =>
+              o.name.toLowerCase().includes(q) ||
+              (GROUP_CONFIG[type]?.label ?? type).toLowerCase().includes(q)
+          )
+        : objects,
+    ])
+    .filter(([, objects]) => objects.length > 0);
+
+  // Ctrl+F / Cmd+F opens the catalog search instead of the browser's find bar
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "f") return;
+      e.preventDefault();
+      setIsMenuOpen(true);
+      searchRef.current?.select(); // already open; a fresh open focuses via autoFocus
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [active]);
+
+  const closeMenu = () => {
+    setIsMenuOpen(false);
+    setQuery("");
+  };
+
   const toggleGroup = (type) => {
     setExpandedGroups((prev) => ({
       ...prev,
@@ -60,14 +97,22 @@ function ObjectNavigator({ onObjectSelect, selectedObject }) {
 
   const handleObjectClick = (object) => {
     onObjectSelect(object);
-    setIsMenuOpen(false); // Close menu after selection
+    closeMenu(); // Close menu after selection
+  };
+
+  const handleSearchKey = (e) => {
+    if (e.key === "Enter" && visibleGroups.length) handleObjectClick(visibleGroups[0][1][0]);
+    if (e.key === "Escape") {
+      if (query) setQuery("");
+      else closeMenu();
+    }
   };
 
   return (
     <>
       {/* Toggle Button */}
       <button
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        onClick={() => (isMenuOpen ? closeMenu() : setIsMenuOpen(true))}
         className={`fixed top-4 right-4 z-40 flex items-center space-x-2.5 px-3.5 py-2 rounded-xl backdrop-blur-md border transition-all duration-300 font-mono text-xs shadow-xl cursor-pointer ${
           isMenuOpen
             ? "bg-neutral-900 border-neutral-700 text-white shadow-[0_0_20px_rgba(34,211,238,0.2)]"
@@ -112,7 +157,7 @@ function ObjectNavigator({ onObjectSelect, selectedObject }) {
               </h2>
             </div>
             <button
-              onClick={() => setIsMenuOpen(false)}
+              onClick={closeMenu}
               className="text-neutral-500 hover:text-white p-1 rounded-lg hover:bg-neutral-800/60 transition-colors cursor-pointer"
             >
               <svg
@@ -129,14 +174,50 @@ function ObjectNavigator({ onObjectSelect, selectedObject }) {
             </button>
           </div>
 
+          {/* Search */}
+          <div className="px-3 pt-3">
+            <label className="flex items-center gap-2 px-3 py-2 rounded-lg bg-neutral-900/60 border border-neutral-800 focus-within:border-cyan-400/60 transition-colors">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                className="text-neutral-500 flex-shrink-0"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                ref={searchRef}
+                autoFocus
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={handleSearchKey}
+                placeholder="Search objects..."
+                aria-label="Search celestial catalog"
+                className="flex-1 min-w-0 bg-transparent outline-none text-xs text-neutral-100 placeholder:text-neutral-500"
+              />
+              <kbd className="font-mono text-[10px] text-neutral-500">{MOD_KEY} F</kbd>
+            </label>
+          </div>
+
           {/* Grouped Object Lists */}
           <div className="p-3 pr-2.5 overflow-y-auto space-y-2 flex-1">
-            {Object.entries(groupedObjects).map(([type, objects]) => {
+            {visibleGroups.length === 0 && (
+              <div className="px-3 py-6 text-center text-xs font-mono text-neutral-500">
+                NO MATCHES FOR "{query.trim()}"
+              </div>
+            )}
+            {visibleGroups.map(([type, objects]) => {
               const meta = GROUP_CONFIG[type] || {
                 label: type,
                 dot: "bg-neutral-400",
               };
-              const isExpanded = expandedGroups[type];
+              const isExpanded = q ? true : expandedGroups[type]; // searching shows every hit
 
               return (
                 <div key={type} className="rounded-lg bg-neutral-900/30 border border-neutral-800/50 overflow-hidden">
@@ -227,7 +308,7 @@ function ObjectNavigator({ onObjectSelect, selectedObject }) {
       {isMenuOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[1px]"
-          onClick={() => setIsMenuOpen(false)}
+          onClick={closeMenu}
         />
       )}
     </>
