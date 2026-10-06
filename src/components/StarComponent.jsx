@@ -48,6 +48,18 @@ function getRaysTexture(colorHex) {
   return tex;
 }
 
+// sun.jpg is orange, so multiplying it by a blue tint leaves a dark rusty core inside a blue corona.
+// Other stars use only its brightness for surface detail and take their hue from `color`.
+// 2.5 lifts the texture's ~0.33 mean linear luminance back to around full brightness
+const tintByLuminance = (shader) => {
+  shader.fragmentShader = shader.fragmentShader.replace(
+    "#include <map_fragment>",
+    `#ifdef USE_MAP
+      diffuseColor.rgb *= dot(texture2D(map, vMapUv).rgb, vec3(0.2126, 0.7152, 0.0722)) * 2.5;
+    #endif`
+  );
+};
+
 function StarComponent({ object, onClick, onRegisterSun }) {
   const { gl } = useThree();
   const meshRef = useRef();
@@ -152,6 +164,7 @@ function StarComponent({ object, onClick, onRegisterSun }) {
         <meshBasicMaterial
           map={texture || null}
           color={isSol ? "#fff8eb" : object.color}
+          onBeforeCompile={isSol ? undefined : tintByLuminance}
           toneMapped={false}
         />
       </mesh>
