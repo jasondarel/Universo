@@ -106,10 +106,14 @@ export const celestialObjects = [
     id: 10,
     type: "black_hole",
     name: "Cygnus X-1",
-    position: [-210, 60, -240],
+    // Farthest object from Sol, as it's the most distant one in reality
+    position: [-389, 111, -444],
     color: "#2d3436",
-    size: 8,
-    fun_fact: "The first black hole ever discovered, confirmed in 1971.",
+    size: 28,
+    extent: "~125 km event horizon",
+    distance: "~7,200 light-years",
+    fun_fact:
+      "Discovered as an X-ray source in 1964, it became the first object widely accepted to be a black hole. What glows is its accretion disk; the black hole itself is only about 125 km across.",
   },
   {
     id: 11,

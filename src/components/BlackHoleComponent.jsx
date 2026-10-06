@@ -63,9 +63,9 @@ function BlackHoleComponent({ object, onClick }) {
   }, [preparedModel]);
 
   // Keep rotation animation
-  useFrame((state) => {
+  useFrame((state, delta) => {
     if (modelRef.current) {
-      modelRef.current.rotation.y += 0.005;
+      modelRef.current.rotation.y += 0.3 * delta; // per second, so it spins the same at any frame rate
       modelRef.current.rotation.x =
         Math.sin(state.clock.elapsedTime * 0.2) * 0.1;
     }
@@ -85,7 +85,8 @@ function BlackHoleComponent({ object, onClick }) {
 
   if (!preparedModel) return null;
 
-  const baseScale = object?.size || 1;
+  // size is the rendered radius (like every other object), so scale the model's own extent to it
+  const baseScale = (object?.size || 1) / hitRadius;
   const hoverFactor = hovered ? 1.08 : 1; // Slight pop on hover
 
   return (
