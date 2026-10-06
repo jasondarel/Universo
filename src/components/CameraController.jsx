@@ -15,6 +15,11 @@ const _scratchCurrentTargetPos = new THREE.Vector3();
 const _scratchFollowPos = new THREE.Vector3();
 const _scratchFollowDelta = new THREE.Vector3();
 const _scratchTurn = new THREE.Quaternion();
+const _scratchAim = new THREE.Quaternion();
+const _scratchLook = new THREE.Vector3();
+
+// Ease in and out: spool up, cruise, settle (no jolt at take-off)
+const easeInOut = (p) => (p < 0.5 ? 4 * p ** 3 : 1 - (-2 * p + 2) ** 3 / 2);
 
 // Flight feel tuning knobs
 const CRUISE_SPEED = 80; // units/s
@@ -24,6 +29,8 @@ const GLIDE = 2.5; // 1/s: how fast you coast to a stop after letting go (lower 
 const BOOST_FOV = 8; // degrees the view widens at full boost, for a sense of speed
 const SCROLL_THRUST = 0.6; // units/s of thrust per pixel of scroll while free-looking
 const LOOK_PIVOT = 1; // free-look orbits a point this close ahead, which is turning in place
+const TURN_END = 0.35; // share of a fly-to spent turning to face the target
+const MOVE_START = 0.15; // travel starts before the turn ends, so it reads as one motion
 
 function CameraController({ target, selected, onComplete, movementRadius = 650, enabled = true }) {
   const { camera, scene, gl } = useThree();
@@ -150,22 +157,25 @@ function CameraController({ target, selected, onComplete, movementRadius = 650, 
       }
     });
 
-    // Proportional offset vectors so the object is beautifully framed without clipping
-    targetOffsetRef.current.set(distance * 0.35, distance * 0.22, distance);
+    // Arrive on the side we came from (a little above), so the flight heads straight in instead of arcing around
+    targetOffsetRef.current
+      .subVectors(startPos, actualTargetPos)
+      .normalize()
+      .addScaledVector(camera.up, 0.3)
+      .normalize()
+      .multiplyScalar(distance);
 
     let progress = 0;
     // Longer trips take longer, so short hops don't crawl and cross-map flights don't blur past
     const duration = isBackdrop
       ? 1500
-      : THREE.MathUtils.clamp(800 + startPos.distanceTo(actualTargetPos) * 4, 1200, 3500);
+      : THREE.MathUtils.clamp(1200 + startPos.distanceTo(actualTargetPos) * 4, 1600, 3900);
     const startTime = performance.now();
 
     const animate = (now) => {
       const elapsed = now - startTime;
       progress = Math.min(elapsed / duration, 1);
-
-      // Ease in and out: spool up, cruise, settle (no jolt at take-off)
-      const eased = progress < 0.5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2;
+      const eased = easeInOut(progress);
 
       if (isBackdrop) {
         // Swing the aim point around the camera at the same orbit radius; the camera itself stays put
@@ -184,19 +194,23 @@ function CameraController({ target, selected, onComplete, movementRadius = 650, 
           _scratchCurrentTargetPos.copy(actualTargetPos);
         }
 
-        // Interpolate camera position
+        // Fly in, starting once the turn is under way
+        const moveT = easeInOut(THREE.MathUtils.clamp((progress - MOVE_START) / (1 - MOVE_START), 0, 1));
         _scratchDynamicCamPos.copy(_scratchCurrentTargetPos).add(targetOffsetRef.current);
-        camera.position.lerpVectors(startPos, _scratchDynamicCamPos, eased);
+        camera.position.lerpVectors(startPos, _scratchDynamicCamPos, moveT);
 
-        // Interpolate camera target
-        if (controlsRef.current) {
-          controlsRef.current.target.lerpVectors(
-            startTarget,
-            _scratchCurrentTargetPos,
-            eased
-          );
-          controlsRef.current.update();
-        }
+        // Swing the view from where we were looking onto the target, then keep it locked there
+        _scratchLook.subVectors(_scratchCurrentTargetPos, camera.position);
+        const reach = _scratchLook.length();
+        _scratchAim.setFromUnitVectors(aimDir, _scratchLook.divideScalar(reach));
+        _scratchTurn.identity().slerp(_scratchAim, THREE.MathUtils.smoothstep(progress, 0, TURN_END));
+        // Aim point capped inside maxDistance, or the controls would yank the camera toward it
+        controlsRef.current.target
+          .copy(aimDir)
+          .applyQuaternion(_scratchTurn)
+          .multiplyScalar(Math.min(reach, 400))
+          .add(camera.position);
+        controlsRef.current.update();
       }
 
       if (progress < 1) {
